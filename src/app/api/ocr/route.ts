@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY || "AIzaSyDg8-3JqSMQee2Br1A8O3a2LgwxM-Eqtvo";
+const VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY;
 
 async function detectTextWithGoogleVision(imageBase64: string): Promise<string> {
   const res = await fetch(
