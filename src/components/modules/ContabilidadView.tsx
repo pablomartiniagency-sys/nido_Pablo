@@ -79,10 +79,11 @@ export function ContabilidadView() {
         body: formData,
       });
 
-      const data = await res.json();
+      let data: any;
+      try { data = await res.json(); } catch { data = {}; }
 
       if (!res.ok || !data.success) {
-        toast(data.error || "Error en OCR", "error");
+        toast(data.error || `Error ${res.status} — revisa que GOOGLE_VISION_API_KEY esté configurada en Netlify`, "error");
         setOcrLoading(false);
         return;
       }
@@ -103,8 +104,8 @@ export function ContabilidadView() {
       setOcrPreview(null);
       setShowModal(true);
       toast(`OCR completado (${data.vision_api}). Revisa los datos antes de guardar.`);
-    } catch {
-      toast("Error de conexión al procesar OCR", "error");
+    } catch (err: any) {
+      toast(`Error de conexión: ${err?.message || "desconocido"}. Si estás en local, usa npm run dev.`, "error");
     }
     setOcrLoading(false);
   };
@@ -400,7 +401,7 @@ export function ContabilidadView() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
                 className="hidden"
                 onChange={e => handleFileDrop(e.target.files)}
               />

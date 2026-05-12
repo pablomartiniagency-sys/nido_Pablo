@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
-import { IconPlus, IconTrash, IconRefresh, IconCheck, IconX } from "@/components/ui/Icons";
+import { IconPlus, IconTrash, IconRefresh, IconCheck, IconX, IconSettings } from "@/components/ui/Icons";
 
 export function ConfiguracionView() {
   const { user, isDemo, demoMinutesLeft, logout, addStaffUser } = useAuth();
@@ -16,6 +16,8 @@ export function ConfiguracionView() {
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [staffForm, setStaffForm] = useState({ email: "", password: "", name: "" });
   const [staffList, setStaffList] = useState<{ id: string; email: string; name: string }[]>([]);
+  const [resetPassId, setResetPassId] = useState<string | null>(null);
+  const [resetPassValue, setResetPassValue] = useState("");
   const [emailTesting, setEmailTesting] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -57,6 +59,35 @@ export function ConfiguracionView() {
     } else {
       toast(result.error || "Error al crear usuario", "error");
     }
+  };
+
+  const handleDeleteStaff = async (userId: string, email: string) => {
+    if (!confirm(`¿Eliminar usuario ${email}? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
+      const data = await res.json();
+      if (data.success) {
+        setStaffList(prev => prev.filter(s => s.id !== userId));
+        toast(`Usuario ${email} eliminado`);
+      } else {
+        toast(data.error || "Error al eliminar", "error");
+      }
+    } catch { toast("Error de conexión", "error"); }
+  };
+
+  const handleResetStaffPassword = async (userId: string) => {
+    if (!resetPassValue || resetPassValue.length < 6) { toast("La contraseña debe tener al menos 6 caracteres", "error"); return; }
+    try {
+      const res = await fetch("/api/staff", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, password: resetPassValue }) });
+      const data = await res.json();
+      if (data.success) {
+        toast("Contraseña actualizada");
+        setResetPassId(null);
+        setResetPassValue("");
+      } else {
+        toast(data.error || "Error al actualizar", "error");
+      }
+    } catch { toast("Error de conexión", "error"); }
   };
 
   const handleTestEmail = async () => {
@@ -203,12 +234,28 @@ export function ConfiguracionView() {
             {staffList.length === 0 && <p className="text-sm text-white/40">No hay usuarios secundarios. Añade educadores o personal.</p>}
             <div className="space-y-2">
               {staffList.map(s => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                  <div>
-                    <div className="text-sm font-medium text-white">{s.name}</div>
-                    <div className="text-xs text-white/40">{s.email}</div>
+                <div key={s.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-white">{s.name}</div>
+                      <div className="text-xs text-white/40">{s.email}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="info">Personal</Badge>
+                      <button onClick={() => setResetPassId(resetPassId === s.id ? null : s.id)} className="text-white/30 hover:text-white text-xs transition" title="Resetear contraseña">
+                        <IconSettings width={14} height={14} />
+                      </button>
+                      <button onClick={() => handleDeleteStaff(s.id, s.email)} className="text-white/30 hover:text-red-400 transition" title="Eliminar">
+                        <IconTrash width={14} height={14} />
+                      </button>
+                    </div>
                   </div>
-                  <Badge variant="info">Personal</Badge>
+                  {resetPassId === s.id && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-white/[0.05]">
+                      <input className="input flex-1" type="password" placeholder="Nueva contraseña" value={resetPassValue} onChange={e => setResetPassValue(e.target.value)} />
+                      <Button variant="secondary" size="sm" onClick={() => handleResetStaffPassword(s.id)}>Guardar</Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
