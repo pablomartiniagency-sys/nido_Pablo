@@ -33,6 +33,7 @@ export default function OportunidadesView() {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("todos");
   const [showForm, setShowForm] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOportunidadForm, setShowOportunidadForm] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -207,59 +208,83 @@ export default function OportunidadesView() {
         </div>
       )}
 
-      {/* Modal nuevo lead */}
+      {/* Modal nuevo/editar lead */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
           <div className="bg-charcoal-800 border border-charcoal-700/50 rounded-2xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-4">Nuevo lead</h3>
+            <h3 className="text-lg font-bold mb-4">{editingLead ? "Editar lead" : "Nuevo lead"}</h3>
             <form onSubmit={e => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              const nuevo: Lead = {
-                id: `ld-${Date.now()}`,
+              const data = {
                 nombre: fd.get("nombre") as string,
                 email: fd.get("email") as string,
                 telefono: fd.get("telefono") as string,
                 nombreHijo: (fd.get("nombreHijo") as string) || undefined,
                 edadHijo: (fd.get("edadHijo") as string) || undefined,
                 fuente: fd.get("fuente") as FuenteLead,
-                estado: "nuevo",
-                fechaContacto: new Date().toISOString().split("T")[0],
-                probabilidadCierre: 15,
               };
-              addLead(nuevo);
+              if (editingLead) {
+                updateLead(editingLead.id, data);
+              } else {
+                const nuevo: Lead = {
+                  id: `ld-${Date.now()}`,
+                  ...data,
+                  estado: "nuevo",
+                  fechaContacto: new Date().toISOString().split("T")[0],
+                  probabilidadCierre: 15,
+                };
+                addLead(nuevo);
+              }
               setShowForm(false);
+              setEditingLead(null);
             }}>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <input name="nombre" placeholder="Nombre completo" required
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
-                  <input name="email" type="email" placeholder="Email" required
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Nombre completo <span className="text-coral-400">*</span></label>
+                  <input name="nombre" defaultValue={editingLead?.nombre || ""} required
                     className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input name="telefono" placeholder="Teléfono" required
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
-                  <select name="fuente" required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
-                    <option value="">Fuente</option>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Email <span className="text-coral-400">*</span></label>
+                    <input name="email" type="email" defaultValue={editingLead?.email || ""} required
+                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Teléfono <span className="text-coral-400">*</span></label>
+                    <input name="telefono" defaultValue={editingLead?.telefono || ""} required
+                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Fuente de captación <span className="text-coral-400">*</span></label>
+                  <select name="fuente" defaultValue={editingLead?.fuente || ""} required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                    <option value="">Seleccionar fuente...</option>
                     {fuentes.map(f => <option key={f} value={f}>{f === "recomendacion" ? "Recomendación" : f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input name="nombreHijo" placeholder="Nombre del hijo (opcional)"
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
-                  <select name="edadHijo" className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
-                    <option value="">Edad del hijo</option>
-                    <option value="lactantes">Lactantes</option>
-                    <option value="1 año">1 año</option>
-                    <option value="2 años">2 años</option>
-                    <option value="3 años">3 años</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Nombre del hijo</label>
+                    <input name="nombreHijo" defaultValue={editingLead?.nombreHijo || ""}
+                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Edad del hijo</label>
+                    <select name="edadHijo" defaultValue={editingLead?.edadHijo || ""} className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                      <option value="">Seleccionar edad...</option>
+                      <option value="lactantes">Lactantes</option>
+                      <option value="1 año">1 año</option>
+                      <option value="2 años">2 años</option>
+                      <option value="3 años">3 años</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-charcoal-400 hover:text-white transition-colors">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors text-sm font-medium">Crear lead</button>
+                <button type="button" onClick={() => { setShowForm(false); setEditingLead(null); }} className="px-4 py-2 text-sm text-charcoal-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors text-sm font-medium">{editingLead ? "Guardar cambios" : "Crear lead"}</button>
               </div>
             </form>
           </div>

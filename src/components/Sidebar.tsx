@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
+import { useStore } from "@/lib/data/useStore";
 import {
   IconDashboard, IconAccounting, IconInvoice, IconFamilies,
   IconChat, IconForecast, IconBolt, IconBowl, IconUsers, IconPayroll, IconSettings, IconLogout,
-  IconGraduation, IconTrendingUp, IconBell, IconDownload,
+  IconGraduation, IconTrendingUp, IconBell, IconDownload, IconUpload, IconClipboard,
 } from "@/components/ui/Icons";
 
 const ITEMS = [
@@ -22,7 +23,9 @@ const ITEMS = [
   { section:"contable", href:"/alumnos",        label:"Alumnos",      icon:<IconGraduation /> },
   { section:"contable", href:"/oportunidades",  label:"Oportunidades",icon:<IconTrendingUp /> },
   { section:"contable", href:"/recordatorios",  label:"Recordatorios", icon:<IconBell /> },
+  { section:"contable", href:"/seneca",         label:"Séneca",       icon:<IconClipboard />,  andaluciaOnly: true },
   { section:"sistema",  href:"/exportar",       label:"Exportar datos",icon:<IconDownload /> },
+  { section:"sistema",  href:"/importar",       label:"Importar datos",icon:<IconUpload /> },
   { section:"sistema",  href:"/configuracion",  label:"Configuración",icon:<IconSettings /> },
 ];
 
@@ -35,6 +38,9 @@ const SECCIONES = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { configuracion } = useStore();
+  const esAndalucia = configuracion.comunidadAutonoma === "Andalucía";
+  const items = ITEMS.filter(i => !i.andaluciaOnly || esAndalucia);
   return (
     <aside className="w-64 shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-xl py-6 px-4 hidden md:flex flex-col">
       <div className="px-2 mb-8"><Logo /></div>
@@ -42,7 +48,7 @@ export function Sidebar() {
         {SECCIONES.map(([key, label]) => (
           <div key={key}>
             <div className="label px-3 mb-2">{label}</div>
-            {ITEMS.filter(i => i.section === key).map(it => {
+            {items.filter(i => i.section === key).map(it => {
               const active = pathname === it.href;
               return (
                 <Link key={it.href} href={it.href}

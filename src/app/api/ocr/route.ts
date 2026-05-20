@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 const VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY;
 
 async function detectTextWithGoogleVision(imageBase64: string): Promise<string> {
@@ -94,9 +92,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No se recibió ningún archivo" }, { status: 400 });
     }
 
-    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowed.includes(file.type)) {
-      return NextResponse.json({ error: `Formato no soportado: ${file.type}. Usa JPG, PNG, WebP o PDF.` }, { status: 400 });
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const extToMime: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+    const mime = file.type || extToMime[ext] || "unknown";
+    const imageMimes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!imageMimes.includes(mime) && !["jpg", "jpeg", "png", "webp"].includes(ext)) {
+      return NextResponse.json({ error: `Formato no soportado: "${ext}". Solo JPG, PNG y WebP.` }, { status: 400 });
+    }
+
+    if (ext === "pdf") {
+      return NextResponse.json({ error: "Los PDF no se procesan directamente. Convierte la factura a JPG o PNG e inténtalo de nuevo." }, { status: 400 });
     }
 
     if (file.size > 10 * 1024 * 1024) {

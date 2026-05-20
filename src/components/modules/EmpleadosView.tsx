@@ -108,17 +108,45 @@ export function EmpleadosView() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Editar empleado" : "Nuevo empleado"}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <input className="input col-span-2" placeholder="Nombre completo *" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
-            <input className="input" placeholder="DNI/NIF *" value={form.dni} onChange={e => setForm(p => ({ ...p, dni: e.target.value }))} />
-            <input className="input" placeholder="Puesto *" value={form.puesto} onChange={e => setForm(p => ({ ...p, puesto: e.target.value }))} />
-            <input className="input" placeholder="Salario bruto mensual *" type="number" step="0.01" value={form.salarioBrutoMensual} onChange={e => setForm(p => ({ ...p, salarioBrutoMensual: e.target.value }))} />
-            <input className="input" placeholder="Horas/semana" type="number" step="0.5" value={form.horasSemanales} onChange={e => setForm(p => ({ ...p, horasSemanales: e.target.value }))} />
-            <select className="select" value={form.tipoContrato} onChange={e => setForm(p => ({ ...p, tipoContrato: e.target.value as Empleado["tipoContrato"] }))}>
-              <option value="indefinido">Indefinido</option><option value="temporal">Temporal</option><option value="practicas">Prácticas</option><option value="fijo_discontinuo">Fijo discontinuo</option>
-            </select>
-            <input className="input" placeholder="Fecha alta" type="date" value={form.fechaAlta} onChange={e => setForm(p => ({ ...p, fechaAlta: e.target.value }))} />
-            <input className="input" placeholder="IBAN" value={form.iban} onChange={e => setForm(p => ({ ...p, iban: e.target.value }))} />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Nombre completo <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="Ej: María García López" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">DNI/NIF <span className="text-coral-400">*</span></label>
+              <input className="input w-full" placeholder="12345678Z" value={form.dni} onChange={e => setForm(p => ({ ...p, dni: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Puesto <span className="text-coral-400">*</span></label>
+              <input className="input w-full" placeholder="Ej: Educadora, Cocinera..." value={form.puesto} onChange={e => setForm(p => ({ ...p, puesto: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Salario bruto mensual (€) <span className="text-coral-400">*</span></label>
+              <input className="input w-full" placeholder="1500" type="number" step="0.01" value={form.salarioBrutoMensual} onChange={e => setForm(p => ({ ...p, salarioBrutoMensual: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Horas semanales</label>
+              <input className="input w-full" placeholder="37.5" type="number" step="0.5" value={form.horasSemanales} onChange={e => setForm(p => ({ ...p, horasSemanales: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Tipo de contrato</label>
+              <select className="select w-full" value={form.tipoContrato} onChange={e => setForm(p => ({ ...p, tipoContrato: e.target.value as Empleado["tipoContrato"] }))}>
+                <option value="indefinido">Indefinido</option><option value="temporal">Temporal</option><option value="practicas">Prácticas</option><option value="fijo_discontinuo">Fijo discontinuo</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Fecha de alta</label>
+              <input className="input w-full" type="date" value={form.fechaAlta} onChange={e => setForm(p => ({ ...p, fechaAlta: e.target.value }))} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">IBAN (para nómina SEPA)</label>
+            <input className="input w-full" placeholder="ES00 0000 0000 0000 0000 0000" value={form.iban} onChange={e => setForm(p => ({ ...p, iban: e.target.value }))} />
           </div>
           <label className="flex items-center gap-2 text-sm text-white/60">
             <input type="checkbox" checked={form.activo} onChange={e => setForm(p => ({ ...p, activo: e.target.checked }))} />

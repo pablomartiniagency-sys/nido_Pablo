@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const MASTER_EMAIL = "pablomartiniagency@gmail.com";
+
+function isOwner(req: Request): boolean {
+  const ownerEmail = req.headers.get("x-owner-email");
+  return ownerEmail === MASTER_EMAIL;
+}
+
 export async function DELETE(req: Request) {
   try {
+    if (!isOwner(req)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { userId } = await req.json();
     if (!userId) return NextResponse.json({ error: "userId requerido" }, { status: 400 });
 
@@ -23,6 +32,8 @@ export async function DELETE(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
+    if (!isOwner(req)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { userId, password } = await req.json();
     if (!userId || !password) return NextResponse.json({ error: "userId y password requeridos" }, { status: 400 });
 

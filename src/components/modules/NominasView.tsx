@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useStore } from "@/lib/data/useStore";
 import { eur } from "@/lib/format";
+import { generarSEPANominas } from "@/lib/sepa";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -10,11 +11,17 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { IconDownload, IconRefresh } from "@/components/ui/Icons";
 
+function mesActual(): string {
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const ahora = new Date();
+  return `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+}
+
 export function NominasView() {
   const { nominas, empleados, updateNomina, generarNominasMes } = useStore();
   const { toast } = useToast();
 
-  const [periodo, setPeriodo] = useState("Mayo 2026");
+  const [periodo, setPeriodo] = useState(mesActual());
   const periodos = useMemo(() => { const s = new Set(nominas.map(n => n.periodo)); return Array.from(s).sort(); }, [nominas]);
 
   const nominasMes = useMemo(() => nominas.filter(n => n.periodo === periodo), [nominas, periodo]);
@@ -31,15 +38,44 @@ export function NominasView() {
 
   const getEmpleado = (id: string) => empleados.find(e => e.id === id);
 
+  const handleGenerar = () => {
+    const activos = empleados.filter(e => e.activo);
+    if (activos.length === 0) {
+      toast("No hay empleados activos. Añade empleados desde la sección Empleados.", "error");
+      return;
+    }
+    generarNominasMes(periodo);
+    toast(`Nóminas generadas para ${periodo} (${activos.length} empleados)`);
+  };
+
+  const handleSEPANominas = () => {
+    const seleccionadas = nominas.filter(n => n.periodo === periodo && !n.pagada);
+    if (seleccionadas.length === 0) {
+      toast("No hay nóminas pendientes de pago para este período.", "info");
+      return;
+    }
+    const escuela = { nombre: "Escuela Infantil Nido", nif: "B12345678", iban: "ES9121000418450200051332", bic: "CAIXESBBXXX", creditorId: "ES2800000000000000000000" };
+    const result = generarSEPANominas(seleccionadas, empleados, escuela, periodo);
+    if (!result.xml) { toast("Error al generar SEPA", "error"); return; }
+    const blob = new Blob([result.xml], { type: "application/xml;charset=UTF-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sepa-nominas-${periodo.replace(/\s/g, "-")}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`SEPA generado: ${result.count} transferencias por ${result.total}`);
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       <PageHeader title="Nóminas" description={`${periodo} · ${nominasMes.length} nóminas`}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { generarNominasMes(periodo); toast(`Nóminas generadas para ${periodo}`); }}>
+            <Button variant="secondary" size="sm" onClick={handleGenerar}>
               <IconRefresh width={14} height={14} /> Generar nóminas
             </Button>
-            <Button size="sm" onClick={() => toast("SEPA de nóminas generado (demo)")}>
+            <Button size="sm" onClick={handleSEPANominas}>
               <IconDownload width={14} height={14} /> SEPA nóminas
             </Button>
           </div>
@@ -49,7 +85,7 @@ export function NominasView() {
       <div className="flex items-center gap-2">
         <span className="label">Período:</span>
         <select className="select w-auto" value={periodo} onChange={e => setPeriodo(e.target.value)}>
-          {periodos.length === 0 && <option>Mayo 2026</option>}
+          {periodos.length === 0 && <option value={mesActual()}>{mesActual()}</option>}
           {periodos.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>

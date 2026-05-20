@@ -3,6 +3,8 @@
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OnboardingModal } from "@/components/modules/OnboardingModal";
+import { HelpPanel } from "@/components/modules/HelpPanel";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -33,6 +35,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         </main>
       </div>
+      <OnboardingModal />
+      <HelpPanel />
     </div>
   );
 }

@@ -23,8 +23,10 @@ export function ContactForm({ onClose }: { onClose: () => void }) {
       const data = await res.json();
       if (data.success) {
         setSent(true);
-        toast("Solicitud recibida. Te contactaremos en 24h.");
-        console.log("[Contact] Debug:", data._debug);
+        toast(data.enviado ? "✅ Email recibido — te escribimos en 24h." : "✅ Solicitud registrada — revisa la app para ver los leads.");
+        if (!data.enviado) {
+          toast("⚠️ Email no configurado en Netlify. Ve a Configuración → Email y añade SMTP_PASS.", "info");
+        }
       } else {
         toast(data.error || "Error al enviar", "error");
       }

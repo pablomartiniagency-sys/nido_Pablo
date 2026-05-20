@@ -194,25 +194,37 @@ export function FacturacionView() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nueva factura">
         <div className="space-y-4">
-          <select className="select" value={form.familiaId} onChange={e => setForm(p => ({ ...p, familiaId: e.target.value }))}>
-            <option value="">Seleccionar familia...</option>
-            {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-          </select>
-          <select className="select" value={form.periodo} onChange={e => setForm(p => ({ ...p, periodo: e.target.value }))}>
-            {["Enero 2026","Febrero 2026","Marzo 2026","Abril 2026","Mayo 2026","Junio 2026","Julio 2026","Agosto 2026"].map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Familia <span className="text-coral-400">*</span></label>
+            <select className="select" value={form.familiaId} onChange={e => setForm(p => ({ ...p, familiaId: e.target.value }))}>
+              <option value="">Seleccionar familia...</option>
+              {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Período de facturación <span className="text-coral-400">*</span></label>
+            <select className="select" value={form.periodo} onChange={e => setForm(p => ({ ...p, periodo: e.target.value }))}>
+              {["Enero 2026","Febrero 2026","Marzo 2026","Abril 2026","Mayo 2026","Junio 2026","Julio 2026","Agosto 2026"].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="label">Servicios</div>
+              <label className="block text-sm font-medium text-charcoal-300">Servicios incluidos</label>
               <button onClick={addItemForm} className="text-xs text-coral-400 hover:text-coral-300">+ Añadir línea</button>
             </div>
             {form.items.map((item, i) => (
-              <div key={i} className="flex gap-2 items-center">
-                <input className="input flex-1" placeholder="Concepto" value={item.concepto} onChange={e => updateItemForm(i, "concepto", e.target.value)} />
-                <input className="input w-24" placeholder="Importe" type="number" step="0.01" value={item.importe} onChange={e => updateItemForm(i, "importe", e.target.value)} />
-                {form.items.length > 1 && <button onClick={() => removeItemForm(i)} className="text-white/20 hover:text-red-400"><IconTrash width={14} height={14} /></button>}
+              <div key={i} className="flex gap-2 items-end">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs text-charcoal-400">Concepto</label>
+                  <input className="input w-full" placeholder="Ej: Mensualidad, Comedor, Talleres..." value={item.concepto} onChange={e => updateItemForm(i, "concepto", e.target.value)} />
+                </div>
+                <div className="w-24 space-y-1">
+                  <label className="text-xs text-charcoal-400">Importe (€)</label>
+                  <input className="input w-full" placeholder="0.00" type="number" step="0.01" value={item.importe} onChange={e => updateItemForm(i, "importe", e.target.value)} />
+                </div>
+                {form.items.length > 1 && <button onClick={() => removeItemForm(i)} className="pb-1 text-white/20 hover:text-red-400"><IconTrash width={14} height={14} /></button>}
               </div>
             ))}
           </div>

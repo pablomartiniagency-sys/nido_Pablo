@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check existing session on mount
   useEffect(() => {
+    if (typeof window === "undefined") { setLoading(false); return; }
     const checkSession = async () => {
       const sb = createClient();
       if (sb) {
@@ -157,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addStaffUser = useCallback(async (email: string, password: string, name: string) => {
+    if (user?.role !== "owner") return { success: false, error: "Solo el propietario puede crear usuarios secundarios" };
     const sb = createClient();
     if (!sb) return { success: false, error: "Supabase no configurado" };
     try {

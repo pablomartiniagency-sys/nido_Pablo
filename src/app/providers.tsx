@@ -5,8 +5,8 @@ import { StoreProvider } from "@/lib/data/StoreContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider>
-      <AuthProvider>{children}</AuthProvider>
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>{children}</StoreProvider>
+    </AuthProvider>
   );
 }

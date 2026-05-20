@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { IconPlus, IconTrash, IconRefresh, IconCheck, IconX, IconSettings } from "@/components/ui/Icons";
+import { useStore } from "@/lib/data/useStore";
+import { COMUNIDADES_AUTONOMAS } from "@/types/crm";
 
 export function ConfiguracionView() {
   const { user, isDemo, demoMinutesLeft, logout, addStaffUser } = useAuth();
+  const { configuracion, updateConfiguracion } = useStore();
   const { toast } = useToast();
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [staffForm, setStaffForm] = useState({ email: "", password: "", name: "" });
@@ -64,7 +67,7 @@ export function ConfiguracionView() {
   const handleDeleteStaff = async (userId: string, email: string) => {
     if (!confirm(`¿Eliminar usuario ${email}? Esta acción no se puede deshacer.`)) return;
     try {
-      const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
+      const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json", "x-owner-email": user?.email || "" }, body: JSON.stringify({ userId }) });
       const data = await res.json();
       if (data.success) {
         setStaffList(prev => prev.filter(s => s.id !== userId));
@@ -78,7 +81,7 @@ export function ConfiguracionView() {
   const handleResetStaffPassword = async (userId: string) => {
     if (!resetPassValue || resetPassValue.length < 6) { toast("La contraseña debe tener al menos 6 caracteres", "error"); return; }
     try {
-      const res = await fetch("/api/staff", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, password: resetPassValue }) });
+      const res = await fetch("/api/staff", { method: "PATCH", headers: { "Content-Type": "application/json", "x-owner-email": user?.email || "" }, body: JSON.stringify({ userId, password: resetPassValue }) });
       const data = await res.json();
       if (data.success) {
         toast("Contraseña actualizada");
@@ -221,14 +224,49 @@ export function ConfiguracionView() {
         </Card>
       </div>
 
+      {/* Datos del centro */}
+      <Card>
+        <CardHeader><CardTitle>Datos del centro</CardTitle></CardHeader>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="label mb-1">Nombre del centro</label>
+            <input className="input" value={configuracion.nombre} onChange={e => updateConfiguracion({ nombre: e.target.value })} placeholder="Ej. Escuela Infantil Sol" />
+          </div>
+          <div>
+            <label className="label mb-1">NIF / CIF</label>
+            <input className="input" value={configuracion.nif} onChange={e => updateConfiguracion({ nif: e.target.value })} placeholder="B12345678" />
+          </div>
+          <div>
+            <label className="label mb-1">Teléfono</label>
+            <input className="input" value={configuracion.telefono} onChange={e => updateConfiguracion({ telefono: e.target.value })} placeholder="612345678" />
+          </div>
+          <div>
+            <label className="label mb-1">Comunidad Autónoma</label>
+            <select className="select" value={configuracion.comunidadAutonoma} onChange={e => updateConfiguracion({ comunidadAutonoma: e.target.value })}>
+              <option value="">Seleccionar...</option>
+              {COMUNIDADES_AUTONOMAS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {configuracion.comunidadAutonoma === "Andalucía" && (
+              <p className="text-xs text-emerald-400 mt-1">✔ Módulo Séneca activado. Aparecerá en el menú lateral.</p>
+            )}
+          </div>
+          <div className="md:col-span-2">
+            <label className="label mb-1">Dirección</label>
+            <input className="input" value={configuracion.direccion} onChange={e => updateConfiguracion({ direccion: e.target.value })} placeholder="Av. Constitución 123, 41001 Sevilla" />
+          </div>
+        </div>
+      </Card>
+
       {/* Usuarios secundarios */}
       <Card>
         <CardHeader>
           <CardTitle>Usuarios secundarios</CardTitle>
-          {!isDemo && <Button size="sm" onClick={() => setShowAddStaff(true)}><IconPlus width={14} height={14} /> Añadir</Button>}
+          {user?.role === "owner" && <Button size="sm" onClick={() => setShowAddStaff(true)}><IconPlus width={14} height={14} /> Añadir</Button>}
         </CardHeader>
         {isDemo ? (
           <p className="text-sm text-white/40">Los usuarios secundarios requieren Supabase configurado.</p>
+        ) : user?.role === "staff" ? (
+          <p className="text-sm text-white/40">Solo el propietario puede gestionar usuarios secundarios.</p>
         ) : (
           <>
             {staffList.length === 0 && <p className="text-sm text-white/40">No hay usuarios secundarios. Añade educadores o personal.</p>}

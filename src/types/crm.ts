@@ -77,6 +77,22 @@ export type RegistroAsistencia = {
   registroPor?: string; // quien registró
 };
 
+// ====== Configuración de escuela ======
+
+export const COMUNIDADES_AUTONOMAS = [
+  "Andalucía", "Aragón", "Asturias", "Baleares", "Canarias", "Cantabria",
+  "Castilla-La Mancha", "Castilla y León", "Cataluña", "Extremadura", "Galicia",
+  "La Rioja", "Madrid", "Murcia", "Navarra", "País Vasco", "Valencia",
+] as const;
+
+export type EscuelaConfig = {
+  nombre: string;
+  nif: string;
+  direccion: string;
+  comunidadAutonoma: string;
+  telefono: string;
+};
+
 // ====== Comercial CRM / Leads ======
 
 export type FuenteLead = "web" | "recomendacion" | "google" | "instagram" | "facebook" | "llamada" | "email" | "otro";

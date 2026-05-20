@@ -375,31 +375,49 @@ export default function AlumnosView() {
               setSelectedId(nuevo.id);
             }}>
               <div className="space-y-3">
-                <input name="nombre" placeholder="Nombre completo" required
-                  className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
-                <div className="grid grid-cols-2 gap-3">
-                  <input name="fechaNac" type="date" required
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white outline-none focus:border-coral-500/50" />
-                  <input name="fechaIngreso" type="date" required
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white outline-none focus:border-coral-500/50" />
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Nombre completo <span className="text-coral-400">*</span></label>
+                  <input name="nombre" placeholder="Ej: Martina García" required
+                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
                 </div>
-                <select name="curso" required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
-                  <option value="">Seleccionar curso</option>
-                  <option value="lactantes">Lactantes</option>
-                  <option value="1 año">1 año</option>
-                  <option value="2 años">2 años</option>
-                  <option value="3 años">3 años</option>
-                </select>
-                <select name="estado" className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
-                  <option value="activo">Activo</option>
-                  <option value="prematricula">Pre-matrícula</option>
-                  <option value="inactivo">Inactivo</option>
-                  <option value="baja">Baja</option>
-                </select>
-                <select name="familiaId" required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
-                  <option value="">Familia responsable</option>
-                  {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Fecha de nacimiento <span className="text-coral-400">*</span></label>
+                    <input name="fechaNac" type="date" required
+                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white outline-none focus:border-coral-500/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-charcoal-300">Fecha de ingreso <span className="text-coral-400">*</span></label>
+                    <input name="fechaIngreso" type="date" required
+                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white outline-none focus:border-coral-500/50" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Curso <span className="text-coral-400">*</span></label>
+                  <select name="curso" required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                    <option value="">Seleccionar curso</option>
+                    <option value="lactantes">Lactantes</option>
+                    <option value="1 año">1 año</option>
+                    <option value="2 años">2 años</option>
+                    <option value="3 años">3 años</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Estado</label>
+                  <select name="estado" className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                    <option value="activo">Activo</option>
+                    <option value="prematricula">Pre-matrícula</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="baja">Baja</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-charcoal-300">Familia responsable <span className="text-coral-400">*</span></label>
+                  <select name="familiaId" required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                    <option value="">Seleccionar familia</option>
+                    {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+                  </select>
+                </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-charcoal-400 hover:text-white transition-colors">Cancelar</button>

@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { sendContactEmail } from "@/lib/email";
 
+const DESTINO = "pablomartiniagency@gmail.com";
+
+async function sendSmtp(data: { name: string; email: string; phone?: string; center?: string; message?: string }) {
+  const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (!smtpConfigured) return false;
+  const result = await sendContactEmail(data);
+  return result.sent;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -10,27 +19,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nombre y email requeridos" }, { status: 400 });
     }
 
-    const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    // Intentar enviar email siempre
+    const enviado = await sendSmtp({ name, email, phone, center, message });
 
-    if (!smtpConfigured) {
-      console.log("[Contact] SMTP no configurado. Lead recibido:", { name, email, phone, center, message });
-      return NextResponse.json({
-        success: true,
-        message: "Solicitud recibida. Te contactaremos en 24h.",
-        _debug: "SMTP_NO_CONFIGURADO — edita .env.local con SMTP_PASS válido (App Password de 16 caracteres)",
-      });
-    }
+    // Log detallado para que el dueño vea los leads aunque falle el email
+    console.log("=== NUEVA SOLICITUD DEMO ===");
+    console.log(`Nombre: ${name}`);
+    console.log(`Email: ${email}`);
+    console.log(`Teléfono: ${phone || "—"}`);
+    console.log(`Centro: ${center || "—"}`);
+    console.log(`Mensaje: ${message || "—"}`);
+    console.log(`Email enviado a ${DESTINO}: ${enviado ? "SÍ" : "NO (SMTP no configurado en Netlify)"}`);
+    console.log("============================");
 
-    const result = await sendContactEmail({ name, email, phone, center, message });
-
-    if (result.sent) {
-      return NextResponse.json({ success: true, message: "Mensaje enviado correctamente" });
-    }
-
-    console.error("[Contact] Error SMTP:", result.error);
     return NextResponse.json({
-      success: false,
-      error: `Error al enviar email: ${result.error}. Verifica que SMTP_PASS en .env.local es un App Password válido de 16 caracteres.`,
+      success: true,
+      message: "Solicitud recibida. Te contactaremos en 24h.",
+      enviado,
     });
   } catch (err: any) {
     console.error("[Contact] Error:", err);

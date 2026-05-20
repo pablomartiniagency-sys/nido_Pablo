@@ -50,9 +50,17 @@ export function ContabilidadView() {
   const handleFileDrop = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
-    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowed.includes(file.type)) {
-      toast("Formato no soportado. Usa JPG, PNG, WebP o PDF.", "error");
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedExts = ["jpg", "jpeg", "png", "webp"];
+    const mimeOk = allowedMimes.includes(file.type);
+    const extOk = allowedExts.includes(ext);
+    if (!mimeOk && !extOk) {
+      toast("Formato no soportado. Usa JPG, PNG o WebP.", "error");
+      return;
+    }
+    if (ext === "pdf") {
+      toast("Los PDF no se procesan directamente. Convierte a JPG/PNG.", "error");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -60,7 +68,7 @@ export function ContabilidadView() {
       return;
     }
     setOcrFile(file);
-    if (file.type.startsWith("image/")) {
+    if (file.type.startsWith("image/") || mimeOk) {
       setOcrPreview(URL.createObjectURL(file));
     } else {
       setOcrPreview(null);
@@ -105,7 +113,7 @@ export function ContabilidadView() {
       setShowModal(true);
       toast(`OCR completado (${data.vision_api}). Revisa los datos antes de guardar.`);
     } catch (err: any) {
-      toast(`Error de conexión: ${err?.message || "desconocido"}. Si estás en local, usa npm run dev.`, "error");
+      toast(`Error al conectar con el servidor: ${err?.message || "desconocido"}. Verifica que el sitio esté bien desplegado en Netlify.`, "error");
     }
     setOcrLoading(false);
   };
@@ -333,19 +341,47 @@ export function ContabilidadView() {
 
       {/* Modal añadir gasto */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar gasto">
-        <div className="grid grid-cols-2 gap-3">
-          <input className="input col-span-2" placeholder="Proveedor *" value={form.proveedor} onChange={e => setForm(p => ({ ...p, proveedor: e.target.value }))} />
-          <input className="input col-span-2" placeholder="Concepto *" value={form.concepto} onChange={e => setForm(p => ({ ...p, concepto: e.target.value }))} />
-          <input className="input" placeholder="Importe *" type="number" step="0.01" min="0" value={form.importe} onChange={e => setForm(p => ({ ...p, importe: e.target.value }))} />
-          <input className="input" placeholder="IVA %" type="number" value={form.iva} onChange={e => setForm(p => ({ ...p, iva: e.target.value }))} />
-          <input className="input" placeholder="Fecha" type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} />
-          <select className="select" value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value as CategoriaGasto }))}>
-            {CATEGORIAS_GASTO.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-          <select className="select" value={form.recurrencia} onChange={e => setForm(p => ({ ...p, recurrencia: e.target.value as Recurrencia }))}>
-            <option value="puntual">Puntual</option><option value="mensual">Mensual</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option>
-          </select>
-          <input className="input col-span-2" placeholder="Notas (opcional)" value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} />
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Proveedor <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="Ej: Makro, Endesa, Amazon..." value={form.proveedor} onChange={e => setForm(p => ({ ...p, proveedor: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Concepto <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="Ej: Compra semanal comedor, Factura luz..." value={form.concepto} onChange={e => setForm(p => ({ ...p, concepto: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Importe (€) <span className="text-coral-400">*</span></label>
+              <input className="input w-full" placeholder="0.00" type="number" step="0.01" min="0" value={form.importe} onChange={e => setForm(p => ({ ...p, importe: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">IVA (%)</label>
+              <input className="input w-full" placeholder="21" type="number" value={form.iva} onChange={e => setForm(p => ({ ...p, iva: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Fecha del gasto</label>
+              <input className="input w-full" type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Categoría</label>
+              <select className="select w-full" value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value as CategoriaGasto }))}>
+                {CATEGORIAS_GASTO.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Recurrencia</label>
+            <select className="select w-full" value={form.recurrencia} onChange={e => setForm(p => ({ ...p, recurrencia: e.target.value as Recurrencia }))}>
+              <option value="puntual">Puntual — solo una vez</option><option value="mensual">Mensual — se repite cada mes</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Notas</label>
+            <textarea className="input w-full h-20 resize-none" placeholder="Observaciones adicionales (opcional)" value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} />
+          </div>
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>

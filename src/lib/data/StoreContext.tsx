@@ -2,10 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto } from "@/types";
-import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad } from "@/types/crm";
+import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad, EscuelaConfig } from "@/types/crm";
 import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS } from "./mock";
 import { ALUMNOS_PERFILES, ASISTENCIA, LEADS, OPORTUNIDADES } from "./crm-mock";
 import { clasificarGasto } from "@/lib/ai/simulated";
+import { useAuth } from "@/lib/auth/AuthContext";
 export interface StoreData {
   familias: Familia[];
   facturas: Factura[];
@@ -19,6 +20,7 @@ export interface StoreData {
   asistencia: RegistroAsistencia[];
   leads: Lead[];
   oportunidades: Oportunidad[];
+  configuracion: EscuelaConfig;
 }
 
 export interface BalanceItem {
@@ -39,7 +41,7 @@ export interface FinancialStatement {
   ratioGastosIngresos: number;
 }
 
-const STORE_KEY = "nido-demo-data";
+const OLD_STORE_KEY = "nido-demo-data";
 
 let idCounter = Date.now();
 export function genId(prefix = "id") { return `${prefix}-${++idCounter}`; }
@@ -60,6 +62,7 @@ interface DashboardMetrics {
 interface StoreActions {
   ready: boolean;
   set: <K extends keyof StoreData>(key: K, value: StoreData[K]) => void;
+  updateConfiguracion: (changes: Partial<EscuelaConfig>) => void;
   addFamilia: (f: Familia) => void;
   updateFamilia: (id: string, changes: Partial<Familia>) => void;
   removeFamilia: (id: string) => void;
@@ -100,49 +103,79 @@ type StoreContextType = StoreData & StoreActions;
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
-function getDefaultData(): StoreData {
-  return {
-    familias: FAMILIAS, facturas: FACTURAS, gastos: GASTOS,
-    empleados: EMPLEADOS, nominas: NOMINAS, suministros: SUMINISTROS,
-    menu: MENU, incidencias: INCIDENCIAS,
-    alumnos: ALUMNOS_PERFILES, asistencia: ASISTENCIA,
-    leads: LEADS, oportunidades: OPORTUNIDADES,
-  };
+const CONFIG_DEFECTO: EscuelaConfig = { nombre: "Mi Escuela Infantil", nif: "", direccion: "", comunidadAutonoma: "", telefono: "" };
+
+const DATA_VACIO: StoreData = {
+  familias: [], facturas: [], gastos: [], empleados: [], nominas: [],
+  suministros: [], menu: { lunes: { primero: "", segundo: "", postre: "" }, martes: { primero: "", segundo: "", postre: "" }, miercoles: { primero: "", segundo: "", postre: "" }, jueves: { primero: "", segundo: "", postre: "" }, viernes: { primero: "", segundo: "", postre: "" } },
+  incidencias: [], alumnos: [], asistencia: [], leads: [], oportunidades: [],
+  configuracion: CONFIG_DEFECTO,
+};
+
+const DATA_DEMO: StoreData = {
+  familias: FAMILIAS, facturas: FACTURAS, gastos: GASTOS,
+  empleados: EMPLEADOS, nominas: NOMINAS, suministros: SUMINISTROS,
+  menu: MENU, incidencias: INCIDENCIAS,
+  alumnos: ALUMNOS_PERFILES, asistencia: ASISTENCIA,
+  leads: LEADS, oportunidades: OPORTUNIDADES,
+  configuracion: { ...CONFIG_DEFECTO, nombre: "Escuela Infantil Nido Demo" },
+};
+
+function loadFromStorage(key: string): { data: StoreData | null; defaults: StoreData } {
+  if (typeof window === "undefined") return { data: null, defaults: DATA_VACIO };
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return { data: JSON.parse(raw), defaults: DATA_VACIO };
+  } catch { }
+  return { data: null, defaults: DATA_VACIO };
 }
 
-function loadFromStorage(): StoreData | null {
-  if (typeof window === "undefined") return null;
+function saveToStorage(key: string, data: StoreData) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { }
+}
+
+function migrateOldKey(userId: string) {
+  if (typeof window === "undefined") return;
+  const newKey = `nido-${userId}`;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const defaults = getDefaultData();
-      return { ...defaults, ...parsed, alumnos: parsed.alumnos || defaults.alumnos, asistencia: parsed.asistencia || defaults.asistencia, leads: parsed.leads || defaults.leads, oportunidades: parsed.oportunidades || defaults.oportunidades };
+    const oldRaw = localStorage.getItem(OLD_STORE_KEY);
+    if (oldRaw) {
+      if (!localStorage.getItem(newKey)) {
+        localStorage.setItem(newKey, oldRaw);
+      }
+      localStorage.removeItem(OLD_STORE_KEY);
     }
   } catch { }
-  return null;
-}
-
-function saveToStorage(data: StoreData) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch { }
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<StoreData>(getDefaultData);
+  const auth = useAuth();
+  const user = typeof window !== "undefined" ? auth.user : null;
+  const isDemo = user?.role === "demo";
+  const storeKey = user ? `nido-${user.id}` : `nido-anon`;
+  const [data, setData] = useState<StoreData>(isDemo ? DATA_DEMO : DATA_VACIO);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") { setReady(true); return; }
+    if (!user) { setReady(true); return; }
+    migrateOldKey(user.id);
     try {
-      const stored = loadFromStorage();
-      if (stored) setData(stored);
+      const { data: stored, defaults } = loadFromStorage(storeKey);
+      const base = isDemo ? DATA_DEMO : defaults;
+      if (stored) {
+        setData({ ...base, ...stored, alumnos: stored.alumnos || base.alumnos, asistencia: stored.asistencia || base.asistencia, leads: stored.leads || base.leads, oportunidades: stored.oportunidades || base.oportunidades });
+      } else {
+        setData(base);
+      }
     } catch { }
     setReady(true);
-  }, []);
+  }, [user, storeKey, isDemo]);
 
   useEffect(() => {
-    if (ready) saveToStorage(data);
-  }, [data, ready]);
+    if (ready && user) saveToStorage(storeKey, data);
+  }, [data, ready, storeKey, user]);
 
   const set = useCallback(<K extends keyof StoreData>(key: K, value: StoreData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
@@ -206,6 +239,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addOportunidad = useCallback((o: Oportunidad) => setData(p => ({ ...p, oportunidades: [...p.oportunidades, o] })), []);
   const updateOportunidad = useCallback((id: string, changes: Partial<Oportunidad>) => setData(p => ({ ...p, oportunidades: p.oportunidades.map(o => o.id === id ? { ...o, ...changes } : o) })), []);
   const removeOportunidad = useCallback((id: string) => setData(p => ({ ...p, oportunidades: p.oportunidades.filter(o => o.id !== id) })), []);
+  const updateConfiguracion = useCallback((changes: Partial<EscuelaConfig>) => setData(p => ({ ...p, configuracion: { ...p.configuracion, ...changes } })), []);
 
   const dashboardMetrics = useMemo(() => {
     return {
@@ -276,6 +310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addAsistencia, updateAsistencia,
     addLead, updateLead, removeLead,
     addOportunidad, updateOportunidad, removeOportunidad,
+    updateConfiguracion,
     generarNominasMes, generarAsientosContables, clasificarGasto,
   };
 

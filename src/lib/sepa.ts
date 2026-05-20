@@ -1,4 +1,4 @@
-import type { Factura, Familia } from "@/types";
+import type { Factura, Familia, Nomina, Empleado } from "@/types";
 
 export function generarSEPA(
   facturas: Factura[],
@@ -55,6 +55,59 @@ export function generarSEPA(
 </Document>`;
 
   return { count: adeudos.length, total, fechaCobro, xml };
+}
+
+export function generarSEPANominas(
+  nominas: Nomina[],
+  empleados: Empleado[],
+  escuela: { nombre: string; nif: string; iban: string; bic: string },
+  periodo: string,
+) {
+  const pendientes = nominas.filter(n => !n.pagada);
+  if (!pendientes.length) return { count: 0, total: "0.00", xml: "" };
+
+  const total = pendientes.reduce((s, n) => s + n.neto, 0).toFixed(2);
+  const msgId = `NIDO-NOM-${Date.now()}`;
+  const fechaEjecucion = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split("T")[0];
+  const fechaCreacion = new Date().toISOString();
+
+  const txs = pendientes.map((n, i) => {
+    const emp = empleados.find(e => e.id === n.empleadoId);
+    const iban = emp?.iban?.replace(/\s/g, "") ?? "";
+    return `
+    <CdtTrfTxInf>
+      <PmtId><EndToEndId>NOM-${n.id}</EndToEndId></PmtId>
+      <Amt><InstdAmt Ccy="EUR">${n.neto.toFixed(2)}</InstdAmt></Amt>
+      <Cdtr><Nm>${escapeXml(emp?.nombre ?? "Desconocido")}</Nm></Cdtr>
+      <CdtrAcct><Id><IBAN>${iban}</IBAN></Id></CdtrAcct>
+      <RmtInf><Ustrd>Nómina ${escapeXml(periodo)}</Ustrd></RmtInf>
+    </CdtTrfTxInf>`;
+  }).join("");
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>${msgId}</MsgId>
+      <CreDtTm>${fechaCreacion}</CreDtTm>
+      <NbOfTxs>${pendientes.length}</NbOfTxs>
+      <CtrlSum>${total}</CtrlSum>
+      <InitgPty><Nm>${escapeXml(escuela.nombre)}</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>${msgId}-PMT</PmtInfId>
+      <PmtMtd>TRF</PmtMtd>
+      <BtchBookg>true</BtchBookg>
+      <ReqdExctnDt>${fechaEjecucion}</ReqdExctnDt>
+      <Dbtr><Nm>${escapeXml(escuela.nombre)}</Nm></Dbtr>
+      <DbtrAcct><Id><IBAN>${escuela.iban}</IBAN></Id></DbtrAcct>
+      <DbtrAgt><FinInstnId><BIC>${escuela.bic}</BIC></FinInstnId></DbtrAgt>
+      ${txs}
+    </PmtInf>
+  </CstmrCdtTrfInitn>
+</Document>`;
+
+  return { count: pendientes.length, total, fechaEjecucion, xml };
 }
 
 function escapeXml(s: string) {

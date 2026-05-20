@@ -110,13 +110,28 @@ export function FamiliasView() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Editar familia" : "Nueva familia"}>
         <div className="space-y-4">
-          <input className="input" placeholder="Nombre de la familia *" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
-          <input className="input" placeholder="Email *" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <input className="input" placeholder="Teléfono" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))} />
-            <input className="input" placeholder="IBAN" value={form.iban} onChange={e => setForm(p => ({ ...p, iban: e.target.value }))} />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Nombre de la familia <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="Ej: García López" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
           </div>
-          <input className="input" placeholder="Alumnos (separados por coma): Martina (3a), Leo (1a)" value={form.alumnosStr} onChange={e => setForm(p => ({ ...p, alumnosStr: e.target.value }))} />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Email <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="maria@ejemplo.com" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">Teléfono</label>
+              <input className="input w-full" placeholder="600 00 00 00" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-charcoal-300">IBAN (para domiciliación)</label>
+              <input className="input w-full" placeholder="ES00 0000 0000 0000 0000 0000" value={form.iban} onChange={e => setForm(p => ({ ...p, iban: e.target.value }))} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-charcoal-300">Alumnos</label>
+            <input className="input w-full" placeholder="Martina (3a), Leo (1a)" value={form.alumnosStr} onChange={e => setForm(p => ({ ...p, alumnosStr: e.target.value }))} />
+          </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="label">Servicios</div>
