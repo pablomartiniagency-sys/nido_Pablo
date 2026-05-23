@@ -167,11 +167,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addStaffUser = useCallback(async (email: string, password: string, name: string) => {
     if (user?.role !== "owner") return { success: false, error: "Solo el propietario puede crear usuarios secundarios" };
-    if (password.length < 4) return { success: false, error: "La contraseña debe tener al menos 4 caracteres" };
+    if (password.length < 6) return { success: false, error: "La contraseña debe tener al menos 6 caracteres" };
+
+    // Try Supabase admin API (auto-confirms email)
+    try {
+      const res = await fetch("/api/staff/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, ownerEmail: user.email }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStaffUsers(prev => [...prev, { id: data.user.id, email, role: "staff", name }]);
+        return { success: true };
+      }
+      console.warn("[Auth] Supabase create failed:", data.error);
+    } catch (err: any) {
+      console.warn("[Auth] Supabase create error:", err?.message);
+    }
+
+    // Fallback: localStorage
     const newUser = addLocalStaff(email, password, name);
     setStaffUsers(prev => [...prev, { id: newUser.id, email, role: "staff", name }]);
-    return { success: true };
-  }, [user?.role]);
+    return { success: true, warning: "Creado localmente (sin conexión a Supabase)" };
+  }, [user?.email, user?.role]);
 
   return (
     <AuthContext.Provider value={{ user, loading, isDemo: user?.role === "demo", demoMinutesLeft, login, signup, loginAsDemo, logout, addStaffUser, staffUsers }}>
