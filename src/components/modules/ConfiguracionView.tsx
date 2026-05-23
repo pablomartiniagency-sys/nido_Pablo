@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { createClient } from "@/lib/supabase/client";
+import { getStaffUsers, removeStaffUser as removeLocalStaff, updateStaffPassword as updateLocalStaffPassword } from "@/lib/auth/staff";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -27,26 +28,9 @@ export function ConfiguracionView() {
   const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Load staff list
+  // Load staff list from localStorage
   useEffect(() => {
-    const loadStaff = async () => {
-      const sb = createClient();
-      if (!sb) return;
-      try {
-        const { data } = await sb.auth.admin.listUsers();
-        if (data?.users) {
-          const staff = data.users.filter((u: any) => u.user_metadata?.role === "staff");
-          setStaffList(staff.map((u: any) => ({
-            id: u.id,
-            email: u.email || "",
-            name: u.user_metadata?.name || u.email?.split("@")[0] || "",
-          })));
-        }
-      } catch {
-        // admin list users requires service_role, silently fail
-      }
-    };
-    loadStaff();
+    setStaffList(getStaffUsers().map(u => ({ id: u.id, email: u.email, name: u.name })));
   }, []);
 
   const handleAddStaff = async () => {
@@ -66,31 +50,17 @@ export function ConfiguracionView() {
 
   const handleDeleteStaff = async (userId: string, email: string) => {
     if (!confirm(`¿Eliminar usuario ${email}? Esta acción no se puede deshacer.`)) return;
-    try {
-      const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json", "x-owner-email": user?.email || "" }, body: JSON.stringify({ userId }) });
-      const data = await res.json();
-      if (data.success) {
-        setStaffList(prev => prev.filter(s => s.id !== userId));
-        toast(`Usuario ${email} eliminado`);
-      } else {
-        toast(data.error || "Error al eliminar", "error");
-      }
-    } catch { toast("Error de conexión", "error"); }
+    removeLocalStaff(userId);
+    setStaffList(prev => prev.filter(s => s.id !== userId));
+    toast(`Usuario ${email} eliminado`);
   };
 
   const handleResetStaffPassword = async (userId: string) => {
-    if (!resetPassValue || resetPassValue.length < 6) { toast("La contraseña debe tener al menos 6 caracteres", "error"); return; }
-    try {
-      const res = await fetch("/api/staff", { method: "PATCH", headers: { "Content-Type": "application/json", "x-owner-email": user?.email || "" }, body: JSON.stringify({ userId, password: resetPassValue }) });
-      const data = await res.json();
-      if (data.success) {
-        toast("Contraseña actualizada");
-        setResetPassId(null);
-        setResetPassValue("");
-      } else {
-        toast(data.error || "Error al actualizar", "error");
-      }
-    } catch { toast("Error de conexión", "error"); }
+    if (!resetPassValue || resetPassValue.length < 4) { toast("La contraseña debe tener al menos 4 caracteres", "error"); return; }
+    updateLocalStaffPassword(userId, resetPassValue);
+    toast("Contraseña actualizada");
+    setResetPassId(null);
+    setResetPassValue("");
   };
 
   const handleTestEmail = async () => {
@@ -264,7 +234,7 @@ export function ConfiguracionView() {
           {user?.role === "owner" && <Button size="sm" onClick={() => setShowAddStaff(true)}><IconPlus width={14} height={14} /> Añadir</Button>}
         </CardHeader>
         {isDemo ? (
-          <p className="text-sm text-white/40">Los usuarios secundarios requieren Supabase configurado.</p>
+          <p className="text-sm text-white/40">Inicia sesión como propietario para gestionar usuarios secundarios.</p>
         ) : user?.role === "staff" ? (
           <p className="text-sm text-white/40">Solo el propietario puede gestionar usuarios secundarios.</p>
         ) : (

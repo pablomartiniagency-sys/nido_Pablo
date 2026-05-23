@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { createClient, isSupabaseReady } from "@/lib/supabase/client";
 import { createDemoSession, getDemoSession, clearDemoSession, getDemoMinutesLeft, type DemoSession } from "./demo";
 import { createMasterSession, getMasterSession, clearMasterSession, isValidMasterPassword, getMasterCredentials } from "./master";
+import { getStaffUsers, addStaffUser as addLocalStaff, verifyStaffLogin, removeStaffUser as removeLocalStaff, updateStaffPassword as updateLocalStaffPassword } from "./staff";
 import type { User, Session } from "@supabase/supabase-js";
 
 export type AuthUser = {
@@ -95,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const login = useCallback(async (email: string, password: string) => {
-    // Check master credentials first
+    // 1. Check master credentials
     const masterCreds = getMasterCredentials();
     if (email === masterCreds.email && isValidMasterPassword(password)) {
       createMasterSession();
@@ -103,24 +104,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     }
 
-    const sb = createClient();
-    if (!sb) return { success: false, error: "Supabase no configurado. Usa modo demo." };
-    try {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return { success: false, error: error.message };
-      if (data.user) {
-        setUser({
-          id: data.user.id,
-          email: data.user.email || "",
-          role: (data.user.user_metadata?.role as "owner" | "staff") || "owner",
-          name: data.user.user_metadata?.name,
-        });
-        return { success: true };
-      }
-      return { success: false, error: "Usuario no encontrado" };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    // 2. Check local staff
+    const staffUser = verifyStaffLogin(email, password);
+    if (staffUser) {
+      setUser({ id: staffUser.id, email: staffUser.email, role: "staff", name: staffUser.name });
+      return { success: true };
     }
+
+    // 3. Try Supabase (if available)
+    const sb = createClient();
+    if (sb) {
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (!error && data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email || "",
+            role: (data.user.user_metadata?.role as "owner" | "staff") || "owner",
+            name: data.user.user_metadata?.name,
+          });
+          return { success: true };
+        }
+      } catch {}
+    }
+
+    return { success: false, error: "Credenciales incorrectas. Prueba con la cuenta master: pablomartiniagency@gmail.com" };
   }, []);
 
   const signup = useCallback(async (email: string, password: string, name?: string) => {
@@ -159,23 +167,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addStaffUser = useCallback(async (email: string, password: string, name: string) => {
     if (user?.role !== "owner") return { success: false, error: "Solo el propietario puede crear usuarios secundarios" };
-    const sb = createClient();
-    if (!sb) return { success: false, error: "Supabase no configurado" };
-    try {
-      const { data, error } = await sb.auth.signUp({
-        email, password,
-        options: { data: { name, role: "staff", owner_email: user?.email } },
-      });
-      if (error) return { success: false, error: error.message };
-      if (data.user) {
-        setStaffUsers(prev => [...prev, { id: data.user!.id, email, role: "staff", name }]);
-        return { success: true };
-      }
-      return { success: false, error: "Error al crear usuario secundario" };
-    } catch (err: any) {
-      return { success: false, error: err.message };
-    }
-  }, [user?.email]);
+    if (password.length < 4) return { success: false, error: "La contraseña debe tener al menos 4 caracteres" };
+    const newUser = addLocalStaff(email, password, name);
+    setStaffUsers(prev => [...prev, { id: newUser.id, email, role: "staff", name }]);
+    return { success: true };
+  }, [user?.role]);
 
   return (
     <AuthContext.Provider value={{ user, loading, isDemo: user?.role === "demo", demoMinutesLeft, login, signup, loginAsDemo, logout, addStaffUser, staffUsers }}>
