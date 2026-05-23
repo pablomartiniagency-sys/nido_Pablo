@@ -135,7 +135,7 @@ export function ContabilidadView() {
         iva: ocr.iva?.toString() || "21",
         categoria: clasificarGasto(ocr.proveedor || "", ocr.concepto || "") as CategoriaGasto,
         recurrencia: "puntual",
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: ocr.fecha || new Date().toISOString().split("T")[0],
         notas: ocr.notas || "",
       });
       setShowOcrModal(false);
