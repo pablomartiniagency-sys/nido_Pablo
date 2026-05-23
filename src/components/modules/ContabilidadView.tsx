@@ -24,6 +24,7 @@ export function ContabilidadView() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaGasto | "todas">("todas");
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrStatusText, setOcrStatusText] = useState("Escanear factura");
   const [showModal, setShowModal] = useState(false);
   const [showOcrModal, setShowOcrModal] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -74,12 +75,43 @@ export function ContabilidadView() {
     }
   }, [toast]);
 
+  const convertPdfToPng = async (file: File): Promise<Blob> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    const scale = Math.min(2, 2000 / page.getViewport({ scale: 1 }).width);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => { if (b) resolve(b); else reject(new Error("Canvas toBlob falló")); }, "image/png");
+    });
+  };
+
   const handleOcrUpload = async () => {
     if (!ocrFile) { toast("Selecciona un archivo primero", "error"); return; }
     setOcrLoading(true);
+    setOcrStatusText("Procesando...");
     try {
+      const ext = ocrFile.name.split(".").pop()?.toLowerCase() || "";
+      let fileToSend: File | Blob = ocrFile;
+      let fileName = ocrFile.name;
+
+      if (ext === "pdf") {
+        setOcrStatusText("Convirtiendo PDF a imagen...");
+        const pngBlob = await convertPdfToPng(ocrFile);
+        fileToSend = pngBlob;
+        fileName = ocrFile.name.replace(/\.pdf$/i, ".png");
+      }
+
+      setOcrStatusText("Escaneando con OCR...");
       const formData = new FormData();
-      formData.append("file", ocrFile);
+      formData.append("file", fileToSend, fileName);
 
       const res = await fetch("/api/ocr", {
         method: "POST",
@@ -109,8 +141,9 @@ export function ContabilidadView() {
       setShowOcrModal(false);
       setOcrFile(null);
       setOcrPreview(null);
+      setOcrStatusText("Escanear factura");
       setShowModal(true);
-      toast(`OCR completado (${data.vision_api}). Revisa los datos antes de guardar.`);
+      toast(`OCR completado. Revisa los datos antes de guardar.`);
     } catch (err: any) {
       toast(`Error al conectar con el servidor: ${err?.message || "desconocido"}. Verifica que el sitio esté bien desplegado en Netlify.`, "error");
     }
@@ -390,12 +423,12 @@ export function ContabilidadView() {
 
       {/* Modal OCR — drag-and-drop */}
       {showOcrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); setOcrStatusText("Escanear factura"); }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-lg rounded-2xl bg-ink-700 border border-white/10 p-6 shadow-2xl animate-fadeIn" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-white">Escanear factura (OCR)</h2>
-              <button onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); }} className="text-white/40 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); setOcrStatusText("Escanear factura"); }} className="text-white/40 hover:text-white text-xl leading-none">&times;</button>
             </div>
 
             {/* Drop zone */}
@@ -448,7 +481,7 @@ export function ContabilidadView() {
                   <IconX width={14} height={14} /> Quitar
                 </Button>
                 <Button size="sm" onClick={handleOcrUpload} disabled={ocrLoading} className="flex-1">
-                  <IconCamera width={14} height={14} /> {ocrLoading ? "Escaneando..." : "Escanear factura"}
+                  <IconCamera width={14} height={14} /> {ocrLoading ? ocrStatusText : "Escanear factura"}
                 </Button>
               </div>
             )}
