@@ -51,17 +51,16 @@ export function ContabilidadView() {
     if (!files || files.length === 0) return;
     const file = files[0];
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
-    const allowedExts = ["jpg", "jpeg", "png", "webp"];
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    const allowedExts = ["jpg", "jpeg", "png", "webp", "pdf"];
     const mimeOk = allowedMimes.includes(file.type);
     const extOk = allowedExts.includes(ext);
     if (!mimeOk && !extOk) {
-      toast("Formato no soportado. Usa JPG, PNG o WebP.", "error");
+      toast("Solo JPG, PNG, WebP y PDF", "error");
       return;
     }
     if (ext === "pdf") {
-      toast("Los PDF no se procesan directamente. Convierte a JPG/PNG.", "error");
-      return;
+      // PDF se procesa extrayendo texto
     }
     if (file.size > 10 * 1024 * 1024) {
       toast("Archivo demasiado grande. Máximo 10MB.", "error");
