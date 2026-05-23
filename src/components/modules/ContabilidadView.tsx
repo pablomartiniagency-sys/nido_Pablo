@@ -75,10 +75,19 @@ export function ContabilidadView() {
     }
   }, [toast]);
 
-  const convertPdfToPng = async (file: File): Promise<Blob> => {
+  const getPdfJs = async (): Promise<any> => {
+    if ((window as any).pdfjsLib) return (window as any).pdfjsLib;
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    document.head.appendChild(script);
+    await new Promise<void>((resolve, reject) => { script.onload = () => resolve(); script.onerror = () => reject(new Error("No se pudo cargar pdf.js desde CDN — revisa tu conexión")); });
+    return (window as any).pdfjsLib;
+  };
+
+  const convertPdfToPng = async (file: File): Promise<File> => {
     const arrayBuffer = await file.arrayBuffer();
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
+    const pdfjsLib = await getPdfJs();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const page = await pdf.getPage(1);
     const scale = Math.min(2, 2000 / page.getViewport({ scale: 1 }).width);
@@ -88,9 +97,10 @@ export function ContabilidadView() {
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
     await page.render({ canvasContext: ctx, viewport }).promise;
-    return new Promise<Blob>((resolve, reject) => {
+    const pngBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => { if (b) resolve(b); else reject(new Error("Canvas toBlob falló")); }, "image/png");
     });
+    return new File([pngBlob], file.name.replace(/\.pdf$/i, ".png"), { type: "image/png" });
   };
 
   const handleOcrUpload = async () => {
@@ -98,20 +108,16 @@ export function ContabilidadView() {
     setOcrLoading(true);
     setOcrStatusText("Procesando...");
     try {
-      const ext = ocrFile.name.split(".").pop()?.toLowerCase() || "";
-      let fileToSend: File | Blob = ocrFile;
-      let fileName = ocrFile.name;
+      let fileToSend: File | null = ocrFile;
 
-      if (ext === "pdf") {
+      if (ocrFile.name.toLowerCase().endsWith(".pdf")) {
         setOcrStatusText("Convirtiendo PDF a imagen...");
-        const pngBlob = await convertPdfToPng(ocrFile);
-        fileToSend = pngBlob;
-        fileName = ocrFile.name.replace(/\.pdf$/i, ".png");
+        fileToSend = await convertPdfToPng(ocrFile);
       }
 
       setOcrStatusText("Escaneando con OCR...");
       const formData = new FormData();
-      formData.append("file", fileToSend, fileName);
+      formData.append("file", fileToSend, fileToSend.name);
 
       const res = await fetch("/api/ocr", {
         method: "POST",
@@ -133,7 +139,7 @@ export function ContabilidadView() {
         concepto: ocr.concepto || "",
         importe: ocr.importe?.toString() || "",
         iva: ocr.iva?.toString() || "21",
-        categoria: clasificarGasto(ocr.proveedor || "", ocr.concepto || "") as CategoriaGasto,
+        categoria: (ocr.categoria as CategoriaGasto) || clasificarGasto(ocr.proveedor || "", ocr.concepto || "") as CategoriaGasto,
         recurrencia: "puntual",
         fecha: ocr.fecha || new Date().toISOString().split("T")[0],
         notas: ocr.notas || "",

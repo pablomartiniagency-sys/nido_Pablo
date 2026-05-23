@@ -19,17 +19,21 @@ export async function ocrFactura() {
 export function clasificarGasto(proveedor: string, concepto = "") {
   const t = (proveedor + " " + concepto).toLowerCase();
   const reglas: Array<[RegExp,string]> = [
-    [/\b(makro|mercadona|carrefour|frutas|carnicer|panader|lácteo)\b/i, "alimentacion"],
-    [/\b(endesa|iberdrola|naturgy|gas|luz|electricid|agua|movistar|vodafone|orange|internet)\b/i, "suministros"],
-    [/\b(dideco|material|educativ|juguet|librer|papeler|didáctic)\b/i, "material"],
-    [/\b(limpieza|higieniz|desinfec|lejía|químic)\b/i, "limpieza"],
+    [/\b(uniforme|babero|delantal|chándal|bata|mandil)\b/i, "material"],
+    [/\b(comedor|cocina|menú|menu|catering|comida escolar|alimentación|alimentacion|makro|mercadona|carrefour|fruta|frutas|carnicer|panader|lácteo|lacteo|supermercado|alipende|gallo|arroz|pasta|aceite|legumbre|conserva|puré|pure|potito|merienda|desayuno|comida|leche|huevo)\b/i, "alimentacion"],
+    [/\b(dideco|material|educativ|juguet|librer|papeler|didácti|didacti|escolar|cuaderno|rotulador|témpera|tempera|plastilina|arcilla|pegamento|tijera|folio|cartulina|gomets|ceras|lápiz|lapiz|manualidad|montessori|pintura dedos|pañal|toallita|crema cambio|protector solar|babero|uniforme|pedagógico|pedagogico|sensorial|psicomotricidad|estimulación|estimulacion)\b/i, "material"],
+    [/\b(limpieza|higieniz|desinfec|lejía|lejia|detergente|jabón|jabon|estropajo|bayeta|fregasuelos|ambientador|cloro|alcohol|desinfectante|guante|bolsa basura|fregona|cubo|papel higiénico|papel higienico|toallita|químico|quimico)\b/i, "limpieza"],
+    [/\b(endesa|iberdrola|naturgy|gas|luz|electricid|agua|movistar|vodafone|orange|internet|suministro|recibo|factura luz|factura gas)\b/i, "suministros"],
     [/\b(alquiler|arrendamien|hipotec|propietario)\b/i, "alquiler"],
     [/\b(asesor|gestor|fiscal|contab|abogad|notari)\b/i, "gestoria"],
     [/\b(seguro|axa|mapfre|allianz|rc|civil)\b/i, "seguros"],
     [/\b(nómina|personal|empleado|salario|seguridad social)\b/i, "personal"],
-    [/\b(reparac|ferretería|manten|averí|fontanería)\b/i, "mantenimiento"],
-    [/\b(google|facebook|ads|anuncio|marketing|publicidad)\b/i, "marketing"],
-    [/\b(formación|curso|congreso|jornada|taller)\b/i, "formacion"],
+    [/\b(reparac|ferretería|manten|averí|fontanería|arreglo|obra|reforma)\b/i, "mantenimiento"],
+    [/\b(google|facebook|ads|anuncio|marketing|publicidad|instagram|redes)\b/i, "marketing"],
+    [/\b(formación|formacion|curso|congreso|jornada|taller|seminario|workshop|homologación|homologacion)\b/i, "formacion"],
+    [/\b(transporte|taxi|uber|glovo|gasolinera|gasolina|parking|aparcamiento|tren|metro|autobús|autobus|bus)\b/i, "transporte"],
+    [/\b(farmacia|medicamento|medicina|médico|medico|pediatra|enfermero|enfermera|hospital|clínica|clinica|vacuna|analítica|analitica|receta)\b/i, "salud"],
+    [/\b(ocio|extraescolar|excursión|excursion|salida|cine|teatro|colonia|campamento|verano|parque)\b/i, "ocio"],
   ];
   for (const [re,cat] of reglas) if (re.test(t)) return cat;
   return "otros";

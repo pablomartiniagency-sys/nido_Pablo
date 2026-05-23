@@ -14,7 +14,8 @@ export type Factura = {
 export type CategoriaGasto =
   | "alimentacion" | "material" | "mantenimiento" | "suministros"
   | "personal" | "seguros" | "limpieza" | "alquiler"
-  | "gestoria" | "marketing" | "formacion" | "otros";
+  | "gestoria" | "marketing" | "formacion" | "transporte"
+  | "salud" | "ocio" | "otros";
 
 export type Recurrencia = "puntual" | "mensual" | "trimestral" | "anual";
 

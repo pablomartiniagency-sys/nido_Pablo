@@ -42,14 +42,14 @@ function extraerProveedor(lines: string[]): string {
 }
 
 function extraerImporte(lines: string[]): number {
-  const totalKeywords = ["total", "suma", "importe", "a pagar", "total factura", "neto", "euros", "cobrado", "cargo", "abonado", "efectivo", "tarjeta"];
+  const totalKw = ["total", "suma", "importe", "a pagar", "total factura", "neto", "euros", "cobrado", "cargo", "abonado", "efectivo", "tarjeta"];
   const amounts: { val: number; idx: number; nearTotal: boolean }[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].toLowerCase();
+    const lc = lines[i].toLowerCase();
     const m = lines[i].match(/(\d+[.,]\d{2})\s*€?/);
     if (m) {
       const val = parseFloat(m[1].replace(",", "."));
-      const nearTotal = totalKeywords.some(kw => line.includes(kw));
+      const nearTotal = totalKw.some(kw => lc.includes(kw));
       amounts.push({ val, idx: i, nearTotal });
     }
   }
@@ -64,28 +64,48 @@ function extraerIVA(lines: string[]): number {
     const m = line.match(/IVA\s*[:\s]*(\d+)/i);
     if (m) return parseInt(m[1]);
   }
-  for (const line of lines) {
-    const clean = line.replace(/\s/g, "").toLowerCase();
-    if (clean.includes("iva")) {
-      const m = line.match(/(\d+[.,]\d{2})/);
-      if (m) return 21;
-    }
-  }
   return 21;
 }
 
 function clasificarCategoria(texto: string, proveedor: string): string {
   const t = (texto + " " + proveedor).toLowerCase();
-  if (/\b(alimentación|alimentacion|comida|restaurante|bar|cafetería|cafeteria|supermercado|fruta|verdura|carne|pescado|pan|panadería|panaderia|lácteo|leche|huevo|comestible|mercado|carnicería|carniceria|pescadería|pescaderia|frutería|fruteria|comer|bebida|cerveza|vino|refresco|comida rápida|comida rapida|kebab|pizza|hamburguesa|mcdonald|burger|deliveroo|uber eats|glovo|just eat)\b/.test(t)) return "alimentacion";
-  if (/\b(material|didáctico|didactico|juguete|papelería|papeleria|educativo|librería|libreria|oficina|útil|util|escolar|clase|aula|enseñanza|formación|formacion|curso|taller|libro|cuaderno|bolígrafo|boligrafo|rotulador|pintura|témpera|tempera|plastilina|arcilla|pegamento|tijera|goma|folio|carpeta)\b/.test(t)) return "material";
-  if (/\b(limpieza|higiene|detergente|lejía|lejia|papel higiénico|papel higienico|toallita|jabón|jabon|lavavajillas|estropajo|bayeta|fregasuelos|ambientador|suavizante|cloro|alcohol|desinfectante|guante|bolsa basura|recogedor|escoba|fregona|cubo)\b/.test(t)) return "limpieza";
-  if (/\b(luz|electricidad|gas|agua|internet|teléfono|telefono|movil|móvil|fibra|tarifa|recibo luz|recibo gas|recibo agua|factura luz|factura gas|factura agua|suministro|endesa|iberdrola|naturgy|repsol|vodafone|movistar|orange|yoigo|masmovil)\b/.test(t)) return "suministros";
-  if (/\b(mantenimiento|reparación|reparacion|fontanería|fontaneria|electricista|pintura|pintor|albañil|albañileria|albañilería|carpintero|carpintería|carpinteria|cerrajero|cerrajería|cerrajeria|jardinería|jardineria|limpieza|técnico|tecnico|avería|averia|arreglo|obra|reforma)\b/.test(t)) return "mantenimiento";
-  if (/\b(seguro|póliza|poliza|axa|mapfre|segurcaixa|allianz|reale|generali|mutua|previsión|prevision|cobertura|aseguradora)\b/.test(t)) return "seguros";
-  if (/\b(combustible|gasolina|gasóleo|gasoleo|diésel|diesel|carburante|repsol|cepsa|bp|shell|gasolinera|aparcamiento|parking|peaje|estacionamiento|aparcar|parking|tren|metro|autobús|autobus|bus|taxi|uber|glovo|deliveroo|transporte|viaje|billete|vuelo|avión|avion|aena)\b/.test(t)) return "transporte";
-  if (/\b(farmacia|farmacéutico|farmaceutico|medicamento|medicina|médico|medico|hospital|clínica|clinica|ambulatorio|salud|dentista|oftalmólogo|oftalmologo|analítica|analitica|receta|fisioterapia|seguro médico|seguro medico)\b/.test(t)) return "salud";
-  if (/\b(hostelería|hosteleria|hotel|alojamiento|alquiler|airbnb|booking|viaje|turismo|vacación|vacacion|ocio|entretenimiento|cine|teatro|concierto|espectáculo|espectaculo|museo|parque|atracción|atraccion|turístico|turistico)\b/.test(t)) return "ocio";
-  if (/\b(ropa|calzado|vestido|zapato|camiseta|pantalón|pantalon|chaqueta|abrigo|moda|tienda|almacén|almacen|centro comercial|compra|shopping|bazar|todo a cien|chino|outlet)\b/.test(t)) return "compras";
+
+  if (/\b(uniforme|babero|delantal|chándal|chandal|bata|mandil|peto)\b/i.test(t)) return "material";
+
+  if (/\b(insumo|insumos|menaje|batería|bateria|olla|sartén|sarten|cazo|fuente|bandeja|tupper|táper|taper|vaso|plato|taza|cubierto|tenedor|cuchara|servilleta|mantel|film|papel\s+film|papel\s+aluminio)\b/i.test(t)) return "alimentacion";
+
+  if (/\b(comedor|cocina|menú|menu|catering|alimento|alimentación|alimentacion|restaurante|bar|cafetería|cafeteria|supermercado|fruta|verdura|carne|pescado|pan|panadería|panaderia|lácteo|lacteo|leche|huevo|comestible|mercado|carnicería|carniceria|pescadería|pescaderia|frutería|fruteria|bebida|cerveza|vino|refresco|kebab|pizza|hamburguesa|mcdonald|burger|deliveroo|glovo|makro|alipende|gallo|arroz|pasta|aceite|legumbre|conserva|batido|yogur|galleta|cereal|mermelada|nutella|colacao|nesquik|puré|pure|potito|merienda|desayuno|almuerzo)\b/i.test(t)) return "alimentacion";
+
+  if (/\b(juguete|papelería|papeleria|librería|libreria|oficina|cuaderno|bolígrafo|boligrafo|rotulador|pintura|témpera|tempera|plastilina|arcilla|pegamento|tijera|goma|folio|carpeta|cartulina|gomets|ceras|lápiz|lapiz|sacapuntas|grapadora|perforadora|clip|fundas|sobre|etiqueta|sello|tampón|tapon|compás|compas|regla|escuadra|cartabón|cartabon|bloc|dibujo|acuarela|manualidad|puzzle|construcción|construccion|bloques|abaco|didáctico|didactico|pedagógico|pedagogico|montessori|waldorf|estimulación|estimulacion|psicomotricidad|sensorial|escolar|aula|enseñanza|formación|formacion|taller)\b/i.test(t)) return "material";
+
+  if (/\b(pañal|panal|toallita|toallita\s+húmeda|crema\s+cambio|pomada|vaselina|talco|protector\s+solar|crema\s+solar)\b/i.test(t)) return "material";
+
+  if (/\b(lejía|lejia|detergente|jabón|jabon|lavavajillas|estropajo|bayeta|fregasuelos|ambientador|suavizante|cloro|alcohol|desinfectante|guante|bolsa\s+basura|recogedor|escoba|fregona|cubo|limpia|cristales|limpia|cristal|quitamanchas|multiusos|cepillos|higienizante|antiséptico|antiseptico)\b/i.test(t)) return "limpieza";
+
+  if (/\b(papel\s+higienico|papel\s+higienico|papel\s+wc|rollo\s+cocina)\b/i.test(t)) return "limpieza";
+
+  if (/\b(luz|electricidad|gas|agua|internet|teléfono|telefono|movil|móvil|fibra|tarifa|suministro|endesa|iberdrola|naturgy|repsol|vodafone|movistar|orange|yoigo|masmovil)\b/i.test(t)) return "suministros";
+
+  if (/\b(mantenimiento|reparación|reparacion|fontanería|fontaneria|electricista|pintor|albañil|carpintero|cerrajero|jardinería|jardineria|técnico|tecnico|avería|averia|arreglo|obra|reforma|construcción|construccion)\b/i.test(t)) return "mantenimiento";
+
+  if (/\b(seguro|póliza|poliza|axa|mapfre|segurcaixa|allianz|reale|generali|mutua|cobertura|aseguradora)\b/i.test(t)) return "seguros";
+
+  if (/\b(combustible|gasolina|gasóleo|gasoleo|diésel|diesel|carburante|gasolinera|aparcamiento|parking|peaje|estacionamiento|tren|metro|autobús|autobus|bus|taxi|uber|transporte|billete|vuelo|avión|avion)\b/i.test(t)) return "transporte";
+
+  if (/\b(farmacia|medicamento|medicina|médico|medico|pediatra|enfermero|enfermera|hospital|clínica|clinica|ambulatorio|vacuna|analítica|analitica|receta|fisioterapia|dentista|oftalmólogo|oftalmologo|optometrista|salud)\b/i.test(t)) return "salud";
+
+  if (/\b(ocio|extraescolar|excursión|excursion|colonia|campamento|cine|teatro|concierto|museo|parque|hotel|alojamiento|airbnb|booking|viaje|turismo|entretenimiento|espectáculo|espectaculo)\b/i.test(t)) return "ocio";
+
+  if (/\b(gestoría|gestoria|asesor|asesoría|asesoria|contable|contabilidad|notaría|notaria|abogado|registro|impuesto|tributo|fiscal|tasa)\b/i.test(t)) return "gestoria";
+
+  if (/\b(publicidad|marketing|anuncio|google|facebook|instagram|redes\s+sociales|folleto|volante|cartel|flyer|seo|branding|logo|diseño|diseno|web|dominio|hosting|newsletter)\b/i.test(t)) return "marketing";
+
+  if (/\b(alquiler|arrendamiento|hipoteca|propietario)\b/i.test(t)) return "alquiler";
+
+  if (/\b(nómina|personal|empleado|salario|seguridad\s+social)\b/i.test(t)) return "personal";
+
+  if (/\b(formación|formacion|curso|congreso|jornada|seminario|workshop|homologación|homologacion|certificación|certificacion|capacitación|capacitacion)\b/i.test(t)) return "formacion";
+
   return "otros";
 }
 

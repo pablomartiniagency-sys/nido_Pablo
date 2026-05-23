@@ -10,6 +10,10 @@ export const CATEGORIAS_GASTO = [
   { value: "gestoria", label: "Gestoría", color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" },
   { value: "marketing", label: "Marketing", color: "bg-green-500/20 text-green-300 border-green-500/30" },
   { value: "formacion", label: "Formación", color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
+  { value: "transporte", label: "Transporte", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  { value: "salud", label: "Salud", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+  { value: "ocio", label: "Ocio / Extraescolares", color: "bg-lime-500/20 text-lime-300 border-lime-500/30" },
+  { value: "marketing", label: "Marketing", color: "bg-green-500/20 text-green-300 border-green-500/30" },
   { value: "otros", label: "Otros", color: "bg-white/10 text-white/60 border-white/10" },
 ] as const;
 
