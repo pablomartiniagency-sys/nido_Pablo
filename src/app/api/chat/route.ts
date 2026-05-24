@@ -42,6 +42,7 @@ function contains(q: string, ...words: string[]) { return words.some(w => q.incl
 
 function responder(data: ChatRequest["data"], msg: string): string {
   const q = msg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (contains(q, "recuerda", "recordatorio", "recuerdame", "tarea", "pendiente", "no olvides", "apunta", "anota", "crea una tarea", "crea tarea", "nueva tarea", "nuevo recordatorio")) return responderRecordatorio(data, msg);
   if (contains(q, "hola", "buenos dias", "buenas tardes", "buenas", "hey", "saludos", "que tal")) return responderSaludo(data);
   if (contains(q, "gracias", "ok", "vale", "entendido", "perfecto", "de nada", "super", "genial")) return "¡De nada! Estoy aquí para lo que necesites. Pregúntame sobre alumnos, finanzas, facturas, empleados o leads cuando quieras.";
   if (contains(q, "moroso", "impago", "impagada", "adeuda", "debe", "debemos", "sin pagar", "no han pagado", "pendiente de pago", "alerta de pago", "reclamacion", "factura pendiente")) return responderMorosos(data);
@@ -57,6 +58,24 @@ function responder(data: ChatRequest["data"], msg: string): string {
   if (contains(q, "plaza", "plazas", "cupo", "capacidad", "ratio", "admision", "lista de espera", "completo", "hueco")) return responderCapacidad(data);
   if (contains(q, "cuantos", "cuantas", "que", "quien", "donde", "cuando", "como", "muestra", "lista", "dime", "enseñame", "muestrame", "dame")) return responderExplorar(data, q);
   return responderGeneral(data);
+}
+
+function responderRecordatorio(data: ChatRequest["data"], msg: string): string {
+  const q = msg.toLowerCase();
+  let titulo = "";
+  let fecha = "";
+  if (contains(q, "recuerdame") || contains(q, "recuerda")) {
+    const match = q.match(/recuerdame\s+(?:que\s+)?(.+?)(?:\s+(?:para\s+)?(?:el\s+)?(\d{1,2}\s+de\s+\w+|mañana|pasado\s+mañana|hoy|lunes|martes|miercoles|jueves|viernes|sabado|domingo)|$)/i);
+    if (match) titulo = match[1].trim();
+  }
+  if (!titulo) {
+    titulo = msg.replace(/^(recuerdame|recuerda|crea\s+un\s+recordatorio|crea\s+una\s+tarea|anota|apunta)\s+/i, "").replace(/ para.*$/, "").trim() || "Tarea pendiente";
+  }
+  const fechas: Record<string, string> = { hoy: new Date().toISOString().split("T")[0], manana: new Date(Date.now() + 86400000).toISOString().split("T")[0], "pasado manana": new Date(Date.now() + 172800000).toISOString().split("T")[0] };
+  const findate = fechas[Object.keys(fechas).find(k => q.includes(k)) || ""] || "";
+  const encodedTitulo = encodeURIComponent(titulo.slice(0, 80));
+  const encodedFecha = encodeURIComponent(findate);
+  return `__ACCION__:crear_tarea|${encodedTitulo}|${encodedFecha}\n\n✅ He creado el recordatorio: **${titulo}**${findate ? ` para **${findate}**` : ""}.\n\nPuedes ver todas tus tareas en la sección de Recordatorios.`;
 }
 
 function responderSaludo(data: ChatRequest["data"]): string {

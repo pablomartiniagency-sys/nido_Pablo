@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto } from "@/types";
+import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Tarea } from "@/types";
 import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad, EscuelaConfig } from "@/types/crm";
 import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS } from "./mock";
 import { ALUMNOS_PERFILES, ASISTENCIA, LEADS, OPORTUNIDADES } from "./crm-mock";
@@ -21,6 +21,7 @@ export interface StoreData {
   leads: Lead[];
   oportunidades: Oportunidad[];
   configuracion: EscuelaConfig;
+  tareas: Tarea[];
 }
 
 export interface BalanceItem {
@@ -97,6 +98,9 @@ interface StoreActions {
   financialStatement: FinancialStatement;
   generarAsientosContables: () => { tipo: "ingreso" | "gasto"; concepto: string; importe: number; fecha: string; categoria: string }[];
   clasificarGasto: typeof clasificarGasto;
+  addTarea: (t: Tarea) => void;
+  updateTarea: (id: string, changes: Partial<Tarea>) => void;
+  removeTarea: (id: string) => void;
 }
 
 type StoreContextType = StoreData & StoreActions;
@@ -109,7 +113,7 @@ const DATA_VACIO: StoreData = {
   familias: [], facturas: [], gastos: [], empleados: [], nominas: [],
   suministros: [], menu: { lunes: { primero: "", segundo: "", postre: "" }, martes: { primero: "", segundo: "", postre: "" }, miercoles: { primero: "", segundo: "", postre: "" }, jueves: { primero: "", segundo: "", postre: "" }, viernes: { primero: "", segundo: "", postre: "" } },
   incidencias: [], alumnos: [], asistencia: [], leads: [], oportunidades: [],
-  configuracion: CONFIG_DEFECTO,
+  configuracion: CONFIG_DEFECTO, tareas: [],
 };
 
 const DATA_DEMO: StoreData = {
@@ -119,6 +123,7 @@ const DATA_DEMO: StoreData = {
   alumnos: ALUMNOS_PERFILES, asistencia: ASISTENCIA,
   leads: LEADS, oportunidades: OPORTUNIDADES,
   configuracion: { ...CONFIG_DEFECTO, nombre: "Escuela Infantil Nido Demo" },
+  tareas: [],
 };
 
 function loadFromStorage(key: string): { data: StoreData | null; defaults: StoreData } {
@@ -240,6 +245,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateOportunidad = useCallback((id: string, changes: Partial<Oportunidad>) => setData(p => ({ ...p, oportunidades: p.oportunidades.map(o => o.id === id ? { ...o, ...changes } : o) })), []);
   const removeOportunidad = useCallback((id: string) => setData(p => ({ ...p, oportunidades: p.oportunidades.filter(o => o.id !== id) })), []);
   const updateConfiguracion = useCallback((changes: Partial<EscuelaConfig>) => setData(p => ({ ...p, configuracion: { ...p.configuracion, ...changes } })), []);
+  const addTarea = useCallback((t: Tarea) => setData(p => ({ ...p, tareas: [...p.tareas, t] })), []);
+  const updateTarea = useCallback((id: string, changes: Partial<Tarea>) => setData(p => ({ ...p, tareas: p.tareas.map(t => t.id === id ? { ...t, ...changes } : t) })), []);
+  const removeTarea = useCallback((id: string) => setData(p => ({ ...p, tareas: p.tareas.filter(t => t.id !== id) })), []);
 
   const dashboardMetrics = useMemo(() => {
     return {
@@ -311,6 +319,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addLead, updateLead, removeLead,
     addOportunidad, updateOportunidad, removeOportunidad,
     updateConfiguracion,
+    addTarea, updateTarea, removeTarea,
     generarNominasMes, generarAsientosContables, clasificarGasto,
   };
 

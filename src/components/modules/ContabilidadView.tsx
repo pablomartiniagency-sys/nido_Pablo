@@ -10,15 +10,17 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconPlus, IconCamera, IconRefresh, IconSearch, IconTrash, IconUpload, IconFile, IconX } from "@/components/ui/Icons";
+import { IconPlus, IconCamera, IconRefresh, IconSearch, IconTrash, IconUpload, IconFile, IconX, IconEdit } from "@/components/ui/Icons";
 import type { Gasto, CategoriaGasto, Recurrencia } from "@/types";
+
+type AsientoManual = { id: string; fecha: string; concepto: string; importe: number; tipo: "ingreso" | "gasto"; categoria: string };
 
 type TabView = "gastos" | "balance" | "asientos";
 
 const MESES_CORTO = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 export function ContabilidadView() {
-  const { gastos, facturas, addGasto, removeGasto, financialStatement, generarAsientosContables, clasificarGasto } = useStore();
+  const { gastos, facturas, addGasto, updateGasto, removeGasto, financialStatement, generarAsientosContables, clasificarGasto } = useStore();
   const { toast } = useToast();
   const [tab, setTab] = useState<TabView>("gastos");
   const [busqueda, setBusqueda] = useState("");
@@ -31,6 +33,11 @@ export function ContabilidadView() {
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [ocrPreview, setOcrPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editGastoId, setEditGastoId] = useState<string | null>(null);
+  const [ocrFileName, setOcrFileName] = useState<string>("");
+  const [asientosManuales, setAsientosManuales] = useState<AsientoManual[]>([]);
+  const [showAsientoModal, setShowAsientoModal] = useState(false);
+  const [asientoForm, setAsientoForm] = useState({ fecha: new Date().toISOString().split("T")[0], concepto: "", importe: "", tipo: "gasto" as "ingreso" | "gasto", categoria: "otros" });
   const [form, setForm] = useState({ proveedor: "", concepto: "", importe: "", iva: "21", categoria: "otros" as CategoriaGasto, recurrencia: "puntual" as Recurrencia, fecha: new Date().toISOString().split("T")[0], notas: "" });
 
   const filtrados = useMemo(() => {
@@ -134,6 +141,7 @@ export function ContabilidadView() {
       }
 
       const ocr = data.ocr;
+      setOcrFileName(ocrFile.name);
       setForm({
         proveedor: ocr.proveedor || "",
         concepto: ocr.concepto || "",
@@ -144,6 +152,7 @@ export function ContabilidadView() {
         fecha: ocr.fecha || new Date().toISOString().split("T")[0],
         notas: ocr.notas || "",
       });
+      setEditGastoId(null);
       setShowOcrModal(false);
       setOcrFile(null);
       setOcrPreview(null);
@@ -160,22 +169,71 @@ export function ContabilidadView() {
     if (!form.proveedor || !form.concepto || !form.importe || !form.fecha) { toast("Completa todos los campos obligatorios", "error"); return; }
     const importeNum = parseFloat(form.importe);
     if (isNaN(importeNum) || importeNum <= 0) { toast("Importe inválido", "error"); return; }
-    const newGasto: Gasto = {
-      id: genId("gas"),
-      fecha: form.fecha,
-      proveedor: form.proveedor,
-      concepto: form.concepto,
-      importe: importeNum,
-      iva: parseInt(form.iva) || 21,
-      categoria: form.categoria,
-      recurrencia: form.recurrencia,
-      notas: form.notas,
-      ocr: true,
-    };
-    addGasto(newGasto);
-    toast(`Gasto registrado: ${form.proveedor} — ${eur(importeNum)}`);
+    if (editGastoId) {
+      updateGasto(editGastoId, {
+        fecha: form.fecha,
+        proveedor: form.proveedor,
+        concepto: form.concepto,
+        importe: importeNum,
+        iva: parseInt(form.iva) || 21,
+        categoria: form.categoria,
+        recurrencia: form.recurrencia,
+        notas: form.notas,
+      });
+      toast(`Gasto actualizado: ${form.proveedor} — ${eur(importeNum)}`);
+    } else {
+      const newGasto: Gasto = {
+        id: genId("gas"),
+        fecha: form.fecha,
+        proveedor: form.proveedor,
+        concepto: form.concepto,
+        importe: importeNum,
+        iva: parseInt(form.iva) || 21,
+        categoria: form.categoria,
+        recurrencia: form.recurrencia,
+        notas: form.notas,
+        ocr: !!ocrFileName,
+        archivoOriginal: ocrFileName || undefined,
+      };
+      addGasto(newGasto);
+      toast(`Gasto registrado: ${form.proveedor} — ${eur(importeNum)}`);
+    }
     setShowModal(false);
+    setEditGastoId(null);
+    setOcrFileName("");
     setForm({ proveedor: "", concepto: "", importe: "", iva: "21", categoria: "otros", recurrencia: "puntual", fecha: new Date().toISOString().split("T")[0], notas: "" });
+  };
+
+  const addAsientoManual = () => {
+    if (!asientoForm.concepto || !asientoForm.importe) { toast("Completa concepto e importe", "error"); return; }
+    const importe = parseFloat(asientoForm.importe);
+    if (isNaN(importe) || importe <= 0) { toast("Importe inválido", "error"); return; }
+    const nuevo: AsientoManual = { id: genId("asiento"), fecha: asientoForm.fecha, concepto: asientoForm.concepto, importe, tipo: asientoForm.tipo, categoria: asientoForm.categoria };
+    setAsientosManuales(prev => [...prev, nuevo]);
+    setShowAsientoModal(false);
+    setAsientoForm({ fecha: new Date().toISOString().split("T")[0], concepto: "", importe: "", tipo: "gasto", categoria: "otros" });
+    toast("Asiento contable añadido");
+  };
+
+  const removeAsientoManual = (id: string) => {
+    setAsientosManuales(prev => prev.filter(a => a.id !== id));
+    toast("Asiento eliminado");
+  };
+
+  const handleEdit = (g: Gasto) => {
+    setEditGastoId(g.id);
+    setForm({
+      proveedor: g.proveedor,
+      concepto: g.concepto,
+      importe: g.importe.toString(),
+      iva: g.iva.toString(),
+      categoria: g.categoria,
+      recurrencia: g.recurrencia,
+      fecha: g.fecha,
+      notas: g.notas || "",
+    });
+    setOcrFileName(g.archivoOriginal || "");
+    setShowModal(true);
   };
 
   const handleDelete = (id: string, proveedor: string) => {
@@ -183,29 +241,33 @@ export function ContabilidadView() {
     toast(`Eliminado: ${proveedor}`, "info");
   };
 
-  const asientos = useMemo(() => generarAsientosContables(), [gastos, facturas, generarAsientosContables]);
+  const asientos = useMemo(() => {
+    const auto = generarAsientosContables();
+    const manuales = asientosManuales.map(a => ({ tipo: a.tipo as "ingreso" | "gasto", concepto: a.concepto, importe: a.importe, fecha: a.fecha, categoria: a.categoria }));
+    return [...auto, ...manuales].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }, [gastos, facturas, generarAsientosContables, asientosManuales]);
 
   return (
     <div className="space-y-8 animate-fadeIn">
       <PageHeader title="Contabilidad" description="Libro de gastos, balance y asientos contables"
         actions={
           <>
-            <div className="flex gap-1 bg-white/[0.03] rounded-xl p-1">
+            <div className="flex gap-1 bg-gray-50 rounded-xl p-1">
               {([["gastos","Gastos"],["balance","Balance"],["asientos","Asientos"]] as [TabView,string][]).map(([k, v]) => (
                 <button key={k} onClick={() => setTab(k)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${tab === k ? "bg-coral-500/20 text-coral-300 border border-coral-500/30" : "text-white/50 hover:text-white"}`}>{v}</button>
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${tab === k ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>{v}</button>
               ))}
             </div>
             <Button variant="secondary" size="sm" onClick={() => setShowOcrModal(true)} disabled={ocrLoading}>
               <IconCamera width={14} height={14} /> {ocrLoading ? "Escaneando..." : "OCR Factura"}
             </Button>
-            <Button size="sm" onClick={() => setShowModal(true)}><IconPlus width={14} height={14} /> Nuevo gasto</Button>
+            <Button size="sm" onClick={() => { setEditGastoId(null); setOcrFileName(""); setForm({ proveedor: "", concepto: "", importe: "", iva: "21", categoria: "otros", recurrencia: "puntual", fecha: new Date().toISOString().split("T")[0], notas: "" }); setShowModal(true); }}><IconPlus width={14} height={14} /> Nuevo gasto</Button>
           </>
         }
       />
 
       <div className="block">
-        <div className="card p-4 mb-4 text-sm text-white/60 border border-coral-500/20 bg-coral-500/5">
+        <div className="card p-4 mb-4 text-sm text-ink-600 border border-coral-200 bg-coral-50">
           📸 Sube una foto de la factura desde <strong>OCR Factura</strong> y el sistema extraerá automáticamente proveedor, importe e IVA.
         </div>
       </div>
@@ -213,15 +275,15 @@ export function ContabilidadView() {
       {tab === "gastos" && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4"><div className="label mb-1">Gasto junio</div><div className="text-xl font-bold text-white">{eur(totalMes)}</div></Card>
-            <Card className="p-4"><div className="label mb-1">Principal gasto</div><div className="text-xl font-bold text-white">{porCategoria[0]?.[0] ?? "—"}</div></Card>
-            <Card className="p-4"><div className="label mb-1">Total acumulado</div><div className="text-xl font-bold text-white">{eur(gastos.reduce((s, g) => s + g.importe, 0))}</div></Card>
-            <Card className="p-4"><div className="label mb-1">Gastos/Presupuesto</div><div className="text-xl font-bold text-white">{gastos.length} registros</div></Card>
+            <Card className="p-4"><div className="label mb-1">Gasto junio</div><div className="text-xl font-bold text-ink-900">{eur(totalMes)}</div></Card>
+            <Card className="p-4"><div className="label mb-1">Principal gasto</div><div className="text-xl font-bold text-ink-900">{porCategoria[0]?.[0] ?? "—"}</div></Card>
+            <Card className="p-4"><div className="label mb-1">Total acumulado</div><div className="text-xl font-bold text-ink-900">{eur(gastos.reduce((s, g) => s + g.importe, 0))}</div></Card>
+            <Card className="p-4"><div className="label mb-1">Gastos/Presupuesto</div><div className="text-xl font-bold text-ink-900">{gastos.length} registros</div></Card>
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
               <input className="input pl-9" placeholder="Buscar proveedor o concepto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
             </div>
             <select className="select w-auto" value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value as CategoriaGasto | "todas")}>
@@ -236,33 +298,38 @@ export function ContabilidadView() {
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Fecha</th>
-                    <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Proveedor</th>
-                    <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Concepto</th>
-                    <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Categoría</th>
-                    <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Importe</th>
-                    <th className="text-center py-3 px-3 text-white/40 font-medium text-xs uppercase">IVA</th>
-                    <th className="text-center py-3 px-3 text-white/40 font-medium text-xs uppercase">OCR</th>
-                    <th className="text-center py-3 px-3 text-white/40 font-medium text-xs uppercase w-10"></th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Fecha</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Proveedor</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Concepto</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Categoría</th>
+                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Importe</th>
+                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">IVA</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Archivo</th>
+                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">OCR</th>
+                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase w-14"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtrados.map(g => (
-                    <tr key={g.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 px-3 text-white/60 text-xs">{fechaCorta(g.fecha)}</td>
-                      <td className="py-3 px-3 text-white font-medium">{g.proveedor}</td>
-                      <td className="py-3 px-3 text-white/70 max-w-[200px] truncate">{g.concepto}</td>
+                    <tr key={g.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-3 text-ink-600 text-xs">{fechaCorta(g.fecha)}</td>
+                      <td className="py-3 px-3 text-ink-900 font-medium">{g.proveedor}</td>
+                      <td className="py-3 px-3 text-ink-700 max-w-[200px] truncate">{g.concepto}</td>
                       <td className="py-3 px-3">
                         <span className={`chip text-[10px] ${CATEGORIAS_GASTO.find(c => c.value === g.categoria)?.color ?? ""}`}>
                           {CATEGORIAS_GASTO.find(c => c.value === g.categoria)?.label ?? g.categoria}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right font-medium text-white">{eur(g.importe)}</td>
-                      <td className="py-3 px-3 text-center text-white/40">{g.iva}%</td>
-                      <td className="py-3 px-3 text-center">{g.ocr ? <span className="text-coral-400 text-xs">📷</span> : <span className="text-white/20">—</span>}</td>
+                      <td className="py-3 px-3 text-right font-medium text-ink-900">{eur(g.importe)}</td>
+                      <td className="py-3 px-3 text-center text-ink-500">{g.iva}%</td>
+                      <td className="py-3 px-3 text-left text-xs text-ink-400 max-w-[120px] truncate">{g.archivoOriginal || "—"}</td>
+                      <td className="py-3 px-3 text-center">{g.ocr ? <span className="text-coral-500 text-xs">📷</span> : <span className="text-ink-400">—</span>}</td>
                       <td className="py-3 px-3 text-center">
-                        <button onClick={() => handleDelete(g.id, g.proveedor)} className="text-white/20 hover:text-red-400 transition"><IconTrash width={14} height={14} /></button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleEdit(g)} className="text-ink-400 hover:text-lapis-500 transition" title="Editar"><IconEdit width={14} height={14} /></button>
+                          <button onClick={() => handleDelete(g.id, g.proveedor)} className="text-ink-400 hover:text-red-600 transition" title="Eliminar"><IconTrash width={14} height={14} /></button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -276,9 +343,9 @@ export function ContabilidadView() {
       {tab === "balance" && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-3 gap-4">
-            <Card className="p-5"><div className="label mb-2">Ingresos totales</div><div className="text-2xl font-bold text-emerald-400">{eur(financialStatement.totalIngresos)}</div></Card>
-            <Card className="p-5"><div className="label mb-2">Gastos totales</div><div className="text-2xl font-bold text-red-400">{eur(financialStatement.totalGastos)}</div></Card>
-            <Card className="p-5"><div className="label mb-2">Resultado neto</div><div className={`text-2xl font-bold ${financialStatement.resultado >= 0 ? "text-emerald-400" : "text-red-400"}`}>{eur(financialStatement.resultado)}</div></Card>
+            <Card className="p-5"><div className="label mb-2">Ingresos totales</div><div className="text-2xl font-bold text-emerald-600">{eur(financialStatement.totalIngresos)}</div></Card>
+            <Card className="p-5"><div className="label mb-2">Gastos totales</div><div className="text-2xl font-bold text-red-600">{eur(financialStatement.totalGastos)}</div></Card>
+            <Card className="p-5"><div className="label mb-2">Resultado neto</div><div className={`text-2xl font-bold ${financialStatement.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`}>{eur(financialStatement.resultado)}</div></Card>
           </div>
 
           <Card>
@@ -287,19 +354,19 @@ export function ContabilidadView() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
-                    <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Mes</th>
-                    <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Ingresos</th>
-                    <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Gastos</th>
-                    <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Resultado</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Mes</th>
+                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Ingresos</th>
+                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Gastos</th>
+                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Resultado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {financialStatement.balanceMensual.map(m => (
                     <tr key={m.mes} className="border-b border-white/[0.03]">
-                      <td className="py-3 px-3 text-white font-medium">{m.mes}</td>
-                      <td className="py-3 px-3 text-right text-emerald-400">{eur(m.ingresos)}</td>
-                      <td className="py-3 px-3 text-right text-red-400">{eur(m.gastos)}</td>
-                      <td className={`py-3 px-3 text-right font-medium ${m.resultado >= 0 ? "text-emerald-400" : "text-red-400"}`}>{eur(m.resultado)}</td>
+                      <td className="py-3 px-3 text-ink-900 font-medium">{m.mes}</td>
+                      <td className="py-3 px-3 text-right text-emerald-600">{eur(m.ingresos)}</td>
+                      <td className="py-3 px-3 text-right text-red-600">{eur(m.gastos)}</td>
+                      <td className={`py-3 px-3 text-right font-medium ${m.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`}>{eur(m.resultado)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -313,12 +380,12 @@ export function ContabilidadView() {
               <div className="space-y-2">
                 {porCategoria.map(([cat, total]) => (
                   <div key={cat} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-                    <span className="text-sm text-white/70 capitalize">{cat}</span>
+                    <span className="text-sm text-ink-700 capitalize">{cat}</span>
                     <div className="flex items-center gap-3">
-                      <div className="w-24 h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full bg-coral-400 rounded-full" style={{ width: `${(total / porCategoria[0][1]) * 100}%` }} />
                       </div>
-                      <span className="text-sm font-medium text-white w-20 text-right">{eur(total)}</span>
+                      <span className="text-sm font-medium text-ink-900 w-20 text-right">{eur(total)}</span>
                     </div>
                   </div>
                 ))}
@@ -327,10 +394,10 @@ export function ContabilidadView() {
             <Card>
               <CardHeader><CardTitle>Indicadores financieros</CardTitle></CardHeader>
               <div className="space-y-3">
-                <div className="flex justify-between"><span className="text-white/50">Ratio gastos/ingresos</span><span className="text-white font-medium">{(financialStatement.ratioGastosIngresos * 100).toFixed(1)}%</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Morosos total</span><span className="text-red-400 font-medium">{eur(financialStatement.morososTotal)}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Pendiente de cobro</span><span className="text-amber-400 font-medium">{eur(financialStatement.pendienteCobro)}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Margen neto</span><span className={financialStatement.totalIngresos > 0 ? "text-emerald-400 font-medium" : "text-white/50"}>
+                <div className="flex justify-between"><span className="text-ink-500">Ratio gastos/ingresos</span><span className="text-ink-900 font-medium">{(financialStatement.ratioGastosIngresos * 100).toFixed(1)}%</span></div>
+                <div className="flex justify-between"><span className="text-ink-500">Morosos total</span><span className="text-red-600 font-medium">{eur(financialStatement.morososTotal)}</span></div>
+                <div className="flex justify-between"><span className="text-ink-500">Pendiente de cobro</span><span className="text-amber-600 font-medium">{eur(financialStatement.pendienteCobro)}</span></div>
+                <div className="flex justify-between"><span className="text-ink-500">Margen neto</span><span className={financialStatement.totalIngresos > 0 ? "text-emerald-600 font-medium" : "text-ink-500"}>
                   {financialStatement.totalIngresos > 0 ? `${((financialStatement.resultado / financialStatement.totalIngresos) * 100).toFixed(1)}%` : "—"}
                 </span></div>
               </div>
@@ -341,36 +408,45 @@ export function ContabilidadView() {
 
       {tab === "asientos" && (
         <Card>
-          <CardHeader><CardTitle>Asientos contables ({asientos.length})</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Asientos contables ({asientos.length})</CardTitle>
+              <Button size="sm" onClick={() => setShowAsientoModal(true)}><IconPlus width={14} height={14} /> Añadir asiento manual</Button>
+            </div>
+          </CardHeader>
+          <p className="px-5 pb-3 text-xs text-ink-400">Los asientos en verde son generados automáticamente de facturas y gastos. Puedes añadir asientos manuales para ajustes, amortizaciones, capital inicial, préstamos, etc.</p>
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Fecha</th>
-                  <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Concepto</th>
-                  <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Categoría</th>
-                  <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Tipo</th>
-                  <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Importe</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Fecha</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Concepto</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Categoría</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Tipo</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Importe</th>
+                  <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase w-10"></th>
                 </tr>
               </thead>
               <tbody>
-                {asientos.map((a, i) => (
-                  <tr key={i} className="border-b border-white/[0.03]">
-                    <td className="py-3 px-3 text-white/60 text-xs">{a.fecha}</td>
-                    <td className="py-3 px-3 text-white">{a.concepto}</td>
-                    <td className="py-3 px-3">
-                      <span className={`chip text-[10px] ${a.categoria === "cuotas" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-blue-500/20 text-blue-300 border-blue-500/30"}`}>
-                        {a.categoria}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <Badge variant={a.tipo === "ingreso" ? "success" : "warning"}>{a.tipo}</Badge>
-                    </td>
-                    <td className={`py-3 px-3 text-right font-medium ${a.tipo === "ingreso" ? "text-emerald-400" : "text-red-400"}`}>
-                      {a.tipo === "ingreso" ? "+" : "-"}{eur(a.importe)}
-                    </td>
-                  </tr>
-                ))}
+                {asientos.map((a, i) => {
+                              return (
+                    <tr key={i} className="border-b border-white/[0.03] hover:bg-gray-50">
+                      <td className="py-3 px-3 text-ink-600 text-xs">{a.fecha}</td>
+                      <td className="py-3 px-3 text-ink-900">{a.concepto}</td>
+                      <td className="py-3 px-3">
+                        <span className={`chip text-[10px] ${a.categoria === "cuotas" ? "bg-emerald-50 text-emerald-300 border-emerald-200" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
+                          {a.categoria}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge variant={a.tipo === "ingreso" ? "success" : "warning"}>{a.tipo}</Badge>
+                      </td>
+                      <td className={`py-3 px-3 text-right font-medium ${a.tipo === "ingreso" ? "text-emerald-600" : "text-red-600"}`}>
+                        {a.tipo === "ingreso" ? "+" : "-"}{eur(a.importe)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -378,46 +454,46 @@ export function ContabilidadView() {
       )}
 
       {/* Modal añadir gasto */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar gasto">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editGastoId ? "Editar gasto" : "Registrar gasto"}>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Proveedor <span className="text-coral-400">*</span></label>
+            <label className="block text-sm font-medium text-ink-700">Proveedor <span className="text-coral-500">*</span></label>
             <input className="input w-full" placeholder="Ej: Makro, Endesa, Amazon..." value={form.proveedor} onChange={e => setForm(p => ({ ...p, proveedor: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Concepto <span className="text-coral-400">*</span></label>
+            <label className="block text-sm font-medium text-ink-700">Concepto <span className="text-coral-500">*</span></label>
             <input className="input w-full" placeholder="Ej: Compra semanal comedor, Factura luz..." value={form.concepto} onChange={e => setForm(p => ({ ...p, concepto: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-charcoal-300">Importe (€) <span className="text-coral-400">*</span></label>
+              <label className="block text-sm font-medium text-ink-700">Importe (€) <span className="text-coral-500">*</span></label>
               <input className="input w-full" placeholder="0.00" type="number" step="0.01" min="0" value={form.importe} onChange={e => setForm(p => ({ ...p, importe: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-charcoal-300">IVA (%)</label>
+              <label className="block text-sm font-medium text-ink-700">IVA (%)</label>
               <input className="input w-full" placeholder="21" type="number" value={form.iva} onChange={e => setForm(p => ({ ...p, iva: e.target.value }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-charcoal-300">Fecha del gasto</label>
+              <label className="block text-sm font-medium text-ink-700">Fecha del gasto</label>
               <input className="input w-full" type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-charcoal-300">Categoría</label>
+              <label className="block text-sm font-medium text-ink-700">Categoría</label>
               <select className="select w-full" value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value as CategoriaGasto }))}>
                 {CATEGORIAS_GASTO.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Recurrencia</label>
+            <label className="block text-sm font-medium text-ink-700">Recurrencia</label>
             <select className="select w-full" value={form.recurrencia} onChange={e => setForm(p => ({ ...p, recurrencia: e.target.value as Recurrencia }))}>
               <option value="puntual">Puntual — solo una vez</option><option value="mensual">Mensual — se repite cada mes</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option>
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Notas</label>
+            <label className="block text-sm font-medium text-ink-700">Notas</label>
             <textarea className="input w-full h-20 resize-none" placeholder="Observaciones adicionales (opcional)" value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} />
           </div>
         </div>
@@ -431,10 +507,10 @@ export function ContabilidadView() {
       {showOcrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); setOcrStatusText("Escanear factura"); }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative w-full max-w-lg rounded-2xl bg-ink-700 border border-white/10 p-6 shadow-2xl animate-fadeIn" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-gray-200 p-6 shadow-2xl animate-fadeIn" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Escanear factura (OCR)</h2>
-              <button onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); setOcrStatusText("Escanear factura"); }} className="text-white/40 hover:text-white text-xl leading-none">&times;</button>
+              <h2 className="text-lg font-bold text-ink-900">Escanear factura (OCR)</h2>
+              <button onClick={() => { setShowOcrModal(false); setOcrFile(null); setOcrPreview(null); setOcrStatusText("Escanear factura"); }} className="text-ink-500 hover:text-ink-900 text-xl leading-none">&times;</button>
             </div>
 
             {/* Drop zone */}
@@ -445,31 +521,31 @@ export function ContabilidadView() {
               onClick={() => fileInputRef.current?.click()}
               className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all text-center ${
                 dragOver
-                  ? "border-coral-400 bg-coral-500/10"
+                  ? "border-coral-400 bg-coral-50"
                   : ocrFile
-                  ? "border-emerald-400/50 bg-emerald-500/5"
-                  : "border-white/10 bg-white/[0.02] hover:border-coral-500/30 hover:bg-white/[0.04]"
+                  ? "border-emerald-300 bg-emerald-500/5"
+                  : "border-gray-200 bg-gray-50 hover:border-coral-300 hover:bg-gray-50"
               }`}
             >
               {ocrPreview ? (
                 <div className="w-full">
                   <img src={ocrPreview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
-                  <p className="text-sm text-white/60 mt-3">{ocrFile?.name}</p>
+                  <p className="text-sm text-ink-600 mt-3">{ocrFile?.name}</p>
                 </div>
               ) : ocrFile ? (
                 <div className="flex items-center gap-3">
-                  <IconFile width={32} height={32} className="text-emerald-400" />
+                  <IconFile width={32} height={32} className="text-emerald-600" />
                   <div className="text-left">
-                    <p className="text-sm font-medium text-white">{ocrFile.name}</p>
-                    <p className="text-xs text-white/40">{(ocrFile.size / 1024).toFixed(0)} KB</p>
+                    <p className="text-sm font-medium text-ink-900">{ocrFile.name}</p>
+                    <p className="text-xs text-ink-500">{(ocrFile.size / 1024).toFixed(0)} KB</p>
                   </div>
                 </div>
               ) : (
                 <>
-                  <IconUpload width={36} height={36} className="text-white/30 mb-3" />
-                  <p className="text-sm font-medium text-white/70">Arrastra tu factura aquí</p>
-                  <p className="text-xs text-white/40 mt-1">o haz clic para seleccionar un archivo</p>
-                  <p className="text-[10px] text-white/30 mt-3">JPG · PNG · WebP · PDF (máx 10MB)</p>
+                  <IconUpload width={36} height={36} className="text-ink-400 mb-3" />
+                  <p className="text-sm font-medium text-ink-700">Arrastra tu factura aquí</p>
+                  <p className="text-xs text-ink-500 mt-1">o haz clic para seleccionar un archivo</p>
+                  <p className="text-[10px] text-ink-400 mt-3">JPG · PNG · WebP · PDF (máx 10MB)</p>
                 </>
               )}
               <input
@@ -494,6 +570,51 @@ export function ContabilidadView() {
           </div>
         </div>
       )}
+      {/* Modal añadir asiento contable manual */}
+      <Modal open={showAsientoModal} onClose={() => setShowAsientoModal(false)} title="Añadir asiento contable manual">
+        <p className="text-xs text-ink-400 mb-4">Usa esto para registrar operaciones que no aparecen en facturas ni gastos: amortizaciones, capital inicial, préstamos, subvenciones, donaciones, etc.</p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink-700">Concepto <span className="text-coral-500">*</span></label>
+            <input className="input w-full" placeholder="Ej: Amortización mobiliario, Capital inicial, Préstamo bancario..." value={asientoForm.concepto} onChange={e => setAsientoForm(p => ({ ...p, concepto: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Importe (€) <span className="text-coral-500">*</span></label>
+              <input className="input w-full" placeholder="0.00" type="number" step="0.01" min="0" value={asientoForm.importe} onChange={e => setAsientoForm(p => ({ ...p, importe: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Tipo</label>
+              <select className="select w-full" value={asientoForm.tipo} onChange={e => setAsientoForm(p => ({ ...p, tipo: e.target.value as "ingreso" | "gasto" }))}>
+                <option value="ingreso">Ingreso / Activo</option>
+                <option value="gasto">Gasto / Pasivo</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Fecha</label>
+              <input className="input w-full" type="date" value={asientoForm.fecha} onChange={e => setAsientoForm(p => ({ ...p, fecha: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Categoría</label>
+              <select className="select w-full" value={asientoForm.categoria} onChange={e => setAsientoForm(p => ({ ...p, categoria: e.target.value }))}>
+                <option value="inmovilizado">Inmovilizado</option>
+                <option value="amortizacion">Amortización</option>
+                <option value="capital">Capital / Fondos propios</option>
+                <option value="prestamo">Préstamo / Deuda</option>
+                <option value="subvencion">Subvención</option>
+                <option value="tesoreria">Tesorería</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <Button variant="ghost" size="sm" onClick={() => setShowAsientoModal(false)}>Cancelar</Button>
+          <Button size="sm" onClick={addAsientoManual}>Añadir asiento</Button>
+        </div>
+      </Modal>
     </div>
   );
 }

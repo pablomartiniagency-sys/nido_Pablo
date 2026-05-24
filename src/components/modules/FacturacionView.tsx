@@ -22,15 +22,18 @@ const ESTADO_MAP: Record<EstadoFactura, { label: string; variant: "success" | "w
   anulada: { label: "Anulada", variant: "default" },
 };
 
+type TabView = "resumen" | "facturas";
+
 export function FacturacionView() {
   const { facturas, familias, addFactura, updateFactura, removeFactura } = useStore();
   const { toast } = useToast();
+  const [tab, setTab] = useState<TabView>("resumen");
   const [filtroEstado, setFiltroEstado] = useState<EstadoFactura | "todas">("todas");
   const [busqueda, setBusqueda] = useState("");
   const [sepaXml, setSepaXml] = useState("");
   const [showSepa, setShowSepa] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ familiaId: "", periodo: `Junio 2026`, items: [{ concepto: "", importe: "" }] });
+  const [form, setForm] = useState({ familiaId: "", periodo: `Junio 2026`, items: [] as { concepto: string; importe: string }[] });
 
   const filtradas = useMemo(() => {
     return facturas.filter(f => {
@@ -47,6 +50,18 @@ export function FacturacionView() {
     return { cobrado, pendiente, impago };
   }, [facturas]);
 
+  const resumenFamilias = useMemo(() => {
+    return familias.map(f => {
+      const facturasFamilia = facturas.filter(fc => fc.familiaId === f.id);
+      const totalFacturado = facturasFamilia.reduce((s, fc) => s + fc.total, 0);
+      const pagado = facturasFamilia.filter(fc => fc.estado === "pagada").reduce((s, fc) => s + fc.total, 0);
+      const pendiente = facturasFamilia.filter(fc => fc.estado === "enviada").reduce((s, fc) => s + fc.total, 0);
+      const impagado = facturasFamilia.filter(fc => fc.estado === "impago").reduce((s, fc) => s + fc.total, 0);
+      const ultimaFactura = facturasFamilia.sort((a, b) => b.numero.localeCompare(a.numero))[0];
+      return { ...f, totalFacturado, pagado, pendiente, impagado, deudaTotal: pendiente + impagado, facturasCount: facturasFamilia.length, ultimaFactura };
+    }).sort((a, b) => b.deudaTotal - a.deudaTotal);
+  }, [familias, facturas]);
+
   const handleGenerarSEPA = () => {
     const result = generarSEPA(facturas, familias, ESCUELA_DEMO);
     if (result.count === 0) { toast("No hay facturas pendientes", "info"); return; }
@@ -61,6 +76,24 @@ export function FacturacionView() {
     a.href = url; a.download = `remesa-sepa-${Date.now()}.xml`; a.click();
     URL.revokeObjectURL(url);
     toast("Fichero SEPA descargado. Súbelo a tu banco.");
+  };
+
+  const openNewFactura = (familiaId?: string) => {
+    const f = familiaId ? familias.find(x => x.id === familiaId) : null;
+    const items = f?.servicios?.length
+      ? f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString() }))
+      : [{ concepto: "", importe: "" }];
+    setForm({ familiaId: familiaId || "", periodo: "Junio 2026", items });
+    setShowModal(true);
+  };
+
+  const handleFamiliaChange = (familiaId: string) => {
+    const f = familias.find(x => x.id === familiaId);
+    if (f?.servicios?.length) {
+      setForm(p => ({ ...p, familiaId, items: f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString() })) }));
+    } else {
+      setForm(p => ({ ...p, familiaId, items: [{ concepto: "", importe: "" }] }));
+    }
   };
 
   const handleSubmitFactura = () => {
@@ -90,7 +123,7 @@ export function FacturacionView() {
 
   const addItemForm = () => setForm(p => ({ ...p, items: [...p.items, { concepto: "", importe: "" }] }));
   const removeItemForm = (i: number) => setForm(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
-  const updateItemForm = (i: number, field: keyof Servicio, value: string) => setForm(p => ({
+  const updateItemForm = (i: number, field: "concepto" | "importe", value: string) => setForm(p => ({
     ...p, items: p.items.map((item, idx) => idx === i ? { ...item, [field]: value } : item),
   }));
 
@@ -105,85 +138,177 @@ export function FacturacionView() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <PageHeader title="Facturación" description="Gestión de cobros y remesas SEPA"
+      <PageHeader title="Facturación" description="Gestión de cobros, facturas y remesas SEPA"
         actions={
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => setShowModal(true)}><IconPlus width={14} height={14} /> Nueva factura</Button>
+            <div className="flex gap-1 bg-gray-50 rounded-xl p-1">
+              {([["resumen","Resumen por familia"],["facturas","Facturas"]] as [TabView,string][]).map(([k, v]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${tab === k ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>{v}</button>
+              ))}
+            </div>
+            <Button size="sm" onClick={() => openNewFactura()}><IconPlus width={14} height={14} /> Nueva factura</Button>
             <Button variant="secondary" size="sm" onClick={handleGenerarSEPA}>
-              <IconDownload width={14} height={14} /> Generar remesa SEPA
+              <IconDownload width={14} height={14} /> Remesa SEPA
             </Button>
           </div>
         }
       />
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4"><div className="label mb-1">Cobrado</div><div className="text-xl font-bold text-emerald-400">{eur(totales.cobrado)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Pendiente</div><div className="text-xl font-bold text-amber-400">{eur(totales.pendiente)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">En impago</div><div className="text-xl font-bold text-red-400">{eur(totales.impago)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Cobrado</div><div className="text-xl font-bold text-emerald-600">{eur(totales.cobrado)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Pendiente</div><div className="text-xl font-bold text-amber-600">{eur(totales.pendiente)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">En impago</div><div className="text-xl font-bold text-red-600">{eur(totales.impago)}</div></Card>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-          <input className="input pl-9" placeholder="Buscar factura o familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-        </div>
-        <div className="flex gap-1">
-          {estados.map(e => (
-            <button key={e.value} onClick={() => setFiltroEstado(e.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${filtroEstado === e.value ? "bg-coral-500/20 text-coral-300 border border-coral-500/30" : "text-white/50 hover:text-white border border-transparent"}`}>
-              {e.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle>Facturas ({filtradas.length})</CardTitle></CardHeader>
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Factura</th>
-                <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Familia</th>
-                <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Periodo</th>
-                <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Total</th>
-                <th className="text-center py-3 px-3 text-white/40 font-medium text-xs uppercase">Estado</th>
-                <th className="text-center py-3 px-3 text-white/40 font-medium text-xs uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtradas.map(f => (
-                <tr key={f.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3 px-3 text-white font-medium">{f.numero}</td>
-                  <td className="py-3 px-3 text-white/70">{f.familia}</td>
-                  <td className="py-3 px-3 text-white/50">{f.periodo}</td>
-                  <td className="py-3 px-3 text-right font-medium text-white">{eur(f.total)}</td>
-                  <td className="py-3 px-3 text-center">
-                    <Badge variant={ESTADO_MAP[f.estado].variant}>{ESTADO_MAP[f.estado].label}</Badge>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center justify-center gap-1">
-                      {f.estado === "impago" && (
-                        <button onClick={() => handleMarcarPagada(f.id)} className="text-xs text-emerald-400 hover:text-emerald-300 p-1" title="Cobrar"><IconCheck width={14} height={14} /></button>
-                      )}
-                      {f.estado === "enviada" && (
-                        <button onClick={() => handleMarcarImpago(f.id)} className="text-xs text-red-400 hover:text-red-300 p-1" title="Marcar impago">⚠</button>
-                      )}
-                      <button onClick={() => handleDelete(f.id)} className="text-white/20 hover:text-red-400 p-1" title="Eliminar"><IconTrash width={14} height={14} /></button>
-                    </div>
-                  </td>
+      {tab === "resumen" && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Resumen de cobros por familia</CardTitle>
+              <div className="relative max-w-xs">
+                <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+                <input className="input pl-9 w-full" placeholder="Buscar familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              </div>
+            </div>
+          </CardHeader>
+          <p className="px-5 pb-3 text-xs text-ink-400">Situación actual de cada familia: servicios contratados, total facturado, cobrado, pendiente e impagado.</p>
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Familia</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Servicios contratados</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Facturado</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Cobrado</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Pendiente</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Impagado</th>
+                  <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Acción</th>
                 </tr>
+              </thead>
+              <tbody>
+                {resumenFamilias.filter(f => !busqueda || f.nombre.toLowerCase().includes(busqueda.toLowerCase())).map(f => (
+                  <tr key={f.id} className="border-b border-white/[0.03] hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="text-ink-900 font-medium">{f.nombre}</div>
+                      <div className="text-xs text-ink-500">{f.alumnos.length} alumno{f.alumnos.length !== 1 ? "s" : ""} · {f.facturasCount} factura{f.facturasCount !== 1 ? "s" : ""}</div>
+                    </td>
+                    <td className="py-3 px-3 max-w-[240px]">
+                      {f.servicios.length > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          {f.servicios.map((s, i) => (
+                            <span key={i} className="text-xs text-ink-600 truncate">{s.concepto}: <span className="text-ink-800">{eur(s.importe)}</span></span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-ink-400">Sin servicios contratados</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-right font-medium text-ink-900">{eur(f.totalFacturado)}</td>
+                    <td className="py-3 px-3 text-right font-medium text-emerald-600">{eur(f.pagado)}</td>
+                    <td className="py-3 px-3 text-right font-medium text-amber-600">{eur(f.pendiente)}</td>
+                    <td className="py-3 px-3 text-right">
+                      <span className={`font-medium ${f.impagado > 0 ? "text-red-600" : "text-ink-400"}`}>
+                        {f.impagado > 0 ? eur(f.impagado) : "—"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openNewFactura(f.id)} title="Nueva factura">
+                          <IconPlus width={12} height={12} />
+                        </Button>
+                        {f.ultimaFactura && f.ultimaFactura.estado === "enviada" && (
+                          <button onClick={() => handleMarcarPagada(f.ultimaFactura.id)} className="text-xs text-emerald-600 hover:text-emerald-600 p-1" title="Cobrar última factura">
+                            <IconCheck width={14} height={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {resumenFamilias.filter(f => !busqueda || f.nombre.toLowerCase().includes(busqueda.toLowerCase())).length === 0 && (
+            <div className="p-8 text-center text-ink-400 text-sm">No hay familias registradas. Crea una familia desde el panel Familias.</div>
+          )}
+        </Card>
+      )}
+
+      {tab === "facturas" && (
+        <>
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[200px]">
+              <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+              <input className="input pl-9" placeholder="Buscar factura o familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+            </div>
+            <div className="flex gap-1">
+              {estados.map(e => (
+                <button key={e.value} onClick={() => setFiltroEstado(e.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${filtroEstado === e.value ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900 border border-transparent"}`}>
+                  {e.label}
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader><CardTitle>Facturas ({filtradas.length})</CardTitle></CardHeader>
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Factura</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Familia</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Periodo</th>
+                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Servicios</th>
+                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Total</th>
+                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Estado</th>
+                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtradas.map(f => (
+                    <tr key={f.id} className="border-b border-white/[0.03] hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-3 text-ink-900 font-medium">{f.numero}</td>
+                      <td className="py-3 px-3 text-ink-700">{f.familia}</td>
+                      <td className="py-3 px-3 text-ink-500">{f.periodo}</td>
+                      <td className="py-3 px-3 max-w-[200px]">
+                        <div className="flex flex-col gap-0.5">
+                          {f.items.map((item, i) => (
+                            <span key={i} className="text-xs text-ink-500 truncate">{item.concepto}: {eur(item.importe)}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-right font-medium text-ink-900">{eur(f.total)}</td>
+                      <td className="py-3 px-3 text-center">
+                        <Badge variant={ESTADO_MAP[f.estado].variant}>{ESTADO_MAP[f.estado].label}</Badge>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center justify-center gap-1">
+                          {f.estado === "impago" && (
+                            <button onClick={() => handleMarcarPagada(f.id)} className="text-xs text-emerald-600 hover:text-emerald-600 p-1" title="Cobrar"><IconCheck width={14} height={14} /></button>
+                          )}
+                          {f.estado === "enviada" && (
+                            <button onClick={() => handleMarcarImpago(f.id)} className="text-xs text-red-600 hover:text-red-600 p-1" title="Marcar impago">⚠</button>
+                          )}
+                          <button onClick={() => handleDelete(f.id)} className="text-ink-400 hover:text-red-600 p-1" title="Eliminar"><IconTrash width={14} height={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
 
       <Modal open={showSepa} onClose={() => setShowSepa(false)} title="Remesa SEPA generada">
         <div className="space-y-4">
-          <p className="text-sm text-white/60">Fichero ISO 20022 (pain.008.001.02) listo para descargar e importar en tu banco.</p>
-          <div className="bg-white/[0.02] rounded-xl p-4 max-h-48 overflow-auto custom-scrollbar">
-            <pre className="text-[10px] text-white/40 whitespace-pre-wrap break-all">{sepaXml.slice(0, 800)}...</pre>
+          <p className="text-sm text-ink-600">Fichero ISO 20022 (pain.008.001.02) listo para descargar e importar en tu banco.</p>
+          <div className="bg-gray-50 rounded-xl p-4 max-h-48 overflow-auto custom-scrollbar">
+            <pre className="text-[10px] text-ink-500 whitespace-pre-wrap break-all">{sepaXml.slice(0, 800)}...</pre>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setShowSepa(false)}>Cerrar</Button>
@@ -195,15 +320,22 @@ export function FacturacionView() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nueva factura">
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Familia <span className="text-coral-400">*</span></label>
-            <select className="select" value={form.familiaId} onChange={e => setForm(p => ({ ...p, familiaId: e.target.value }))}>
+            <label className="block text-sm font-medium text-ink-700">Familia <span className="text-coral-500">*</span></label>
+            <select className="select w-full" value={form.familiaId} onChange={e => handleFamiliaChange(e.target.value)}>
               <option value="">Seleccionar familia...</option>
-              {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+              {familias.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.nombre} — {f.servicios.length > 0 ? `${f.servicios.length} servicio(s)` : "sin servicios"}
+                </option>
+              ))}
             </select>
+            {form.familiaId && (() => { const f = familias.find(x => x.id === form.familiaId); return f?.servicios?.length ? (
+              <p className="text-xs text-ink-400 mt-1">Los servicios contratados por esta familia se han cargado automáticamente. Puedes ajustar importes o añadir/eliminar líneas.</p>
+            ) : null; })()}
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-charcoal-300">Período de facturación <span className="text-coral-400">*</span></label>
-            <select className="select" value={form.periodo} onChange={e => setForm(p => ({ ...p, periodo: e.target.value }))}>
+            <label className="block text-sm font-medium text-ink-700">Período de facturación <span className="text-coral-500">*</span></label>
+            <select className="select w-full" value={form.periodo} onChange={e => setForm(p => ({ ...p, periodo: e.target.value }))}>
               {["Enero 2026","Febrero 2026","Marzo 2026","Abril 2026","Mayo 2026","Junio 2026","Julio 2026","Agosto 2026"].map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -211,22 +343,29 @@ export function FacturacionView() {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-charcoal-300">Servicios incluidos</label>
-              <button onClick={addItemForm} className="text-xs text-coral-400 hover:text-coral-300">+ Añadir línea</button>
+              <label className="block text-sm font-medium text-ink-700">Servicios incluidos</label>
+              <button onClick={addItemForm} className="text-xs text-coral-500 hover:text-coral-500">+ Añadir línea</button>
             </div>
             {form.items.map((item, i) => (
               <div key={i} className="flex gap-2 items-end">
                 <div className="flex-1 space-y-1">
-                  <label className="text-xs text-charcoal-400">Concepto</label>
+                  <label className="text-xs text-ink-500">Concepto</label>
                   <input className="input w-full" placeholder="Ej: Mensualidad, Comedor, Talleres..." value={item.concepto} onChange={e => updateItemForm(i, "concepto", e.target.value)} />
                 </div>
                 <div className="w-24 space-y-1">
-                  <label className="text-xs text-charcoal-400">Importe (€)</label>
+                  <label className="text-xs text-ink-500">Importe (€)</label>
                   <input className="input w-full" placeholder="0.00" type="number" step="0.01" value={item.importe} onChange={e => updateItemForm(i, "importe", e.target.value)} />
                 </div>
-                {form.items.length > 1 && <button onClick={() => removeItemForm(i)} className="pb-1 text-white/20 hover:text-red-400"><IconTrash width={14} height={14} /></button>}
+                {form.items.length > 1 && <button onClick={() => removeItemForm(i)} className="pb-1 text-ink-400 hover:text-red-600"><IconTrash width={14} height={14} /></button>}
               </div>
             ))}
+            {form.items.length > 0 && (
+              <div className="flex justify-end pt-2 border-t border-white/[0.04]">
+                <span className="text-sm font-medium text-ink-900">
+                  Total: {eur(form.items.reduce((s, item) => s + (parseFloat(item.importe) || 0), 0))}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>

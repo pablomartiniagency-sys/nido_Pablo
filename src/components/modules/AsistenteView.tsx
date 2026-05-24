@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useStore } from "@/lib/data/useStore";
+import { useStore, genId } from "@/lib/data/useStore";
 import { IconSend } from "@/components/ui/Icons";
+import type { Tarea } from "@/types";
 
 interface Mensaje {
   role: "user" | "assistant";
@@ -16,14 +17,16 @@ const SUGERENCIAS = [
   "Gastos por categoría",
   "¿Cuántos empleados tengo?",
   "Resumen general de la escuela",
+  "Recuérdame comprar material el viernes",
+  "Crea un recordatorio para reunión de padres",
 ];
 
 export default function AsistenteView() {
   const store = useStore();
-  const { ready } = store;
+  const { ready, addTarea } = store;
 
   const [mensajes, setMensajes] = useState<Mensaje[]>([
-    { role: "assistant", content: "¡Hola! Soy el asistente IA de Nido. Pregúntame sobre tus alumnos, facturas, gastos, empleados o cualquier aspecto de tu escuela." },
+    { role: "assistant", content: "¡Hola! Soy el asistente IA de Nido. Pregúntame sobre tus alumnos, facturas, gastos, empleados o cualquier aspecto de tu escuela. También puedo crear recordatorios si me lo pides." },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,12 +71,26 @@ export default function AsistenteView() {
       });
 
       const data = await res.json();
+      let reply = data.reply || "Lo siento, no pude procesar tu consulta. Intenta de nuevo.";
 
-      if (data.reply) {
-        setMensajes(prev => [...prev, { role: "assistant", content: data.reply }]);
-      } else {
-        setMensajes(prev => [...prev, { role: "assistant", content: "Lo siento, no pude procesar tu consulta. Intenta de nuevo." }]);
+      if (reply.startsWith("__ACCION__:crear_tarea|")) {
+        const partes = reply.split("\n")[0].split("|");
+        const titulo = decodeURIComponent(partes[1] || "Tarea pendiente");
+        const fecha = decodeURIComponent(partes[2] || "");
+        const nuevaTarea: Tarea = {
+          id: genId("tar"),
+          titulo,
+          descripcion: `Creado desde el asistente: ${msg}`,
+          fecha: fecha || undefined,
+          completada: false,
+          creadaPor: "ia",
+          createdAt: new Date().toISOString(),
+        };
+        addTarea(nuevaTarea);
+        reply = reply.replace(/^__ACCION__:crear_tarea\|[^|]*\|[^|]*\n\n/, "");
       }
+
+      setMensajes(prev => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMensajes(prev => [...prev, { role: "assistant", content: "Error de conexión. Verifica que el servidor esté funcionando." }]);
     } finally {
@@ -83,24 +100,19 @@ export default function AsistenteView() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto">
-      {/* Header */}
       <div className="mb-4">
-        <h2 className="text-xl font-bold">Asistente IA</h2>
-        <p className="text-sm text-charcoal-400">Consulta tus datos en lenguaje natural</p>
+        <h2 className="text-xl font-bold text-lapis-600">Asistente IA</h2>
+        <p className="text-sm text-ink-500">Consulta tus datos o crea recordatorios en lenguaje natural</p>
       </div>
 
-      {/* Chat */}
-      <div
-        ref={chatRef}
-        className="flex-1 overflow-y-auto space-y-4 pr-2 scroll-smooth"
-      >
+      <div ref={chatRef} className="flex-1 overflow-y-auto space-y-4 pr-2 scroll-smooth">
         {mensajes.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap ${
                 m.role === "user"
-                  ? "bg-coral-500/20 border border-coral-500/30 text-ink-900"
-                  : "bg-charcoal-800/50 border border-charcoal-700/50 text-charcoal-200"
+                  ? "bg-coral-50 border border-coral-200 text-ink-900"
+                  : "bg-gray-50 border border-gray-200 text-ink-800"
               }`}
             >
               {m.content}
@@ -110,24 +122,23 @@ export default function AsistenteView() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-charcoal-800/50 border border-charcoal-700/50 rounded-2xl px-4 py-3 flex items-center gap-2">
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-coral-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-2 h-2 bg-coral-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-2 h-2 bg-coral-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                <span className="w-2 h-2 bg-coral-500 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 bg-coral-500 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 bg-coral-500 rounded-full animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
         )}
 
-        {/* Sugerencias */}
         {!primerMensajeEnviado && (
           <div className="grid grid-cols-2 gap-2 mt-4">
             {SUGERENCIAS.map((s, i) => (
               <button
                 key={i}
                 onClick={() => enviarMensaje(s)}
-                className="text-left px-4 py-3 bg-charcoal-800/30 border border-charcoal-700/50 rounded-xl text-sm text-charcoal-300 hover:border-coral-500/30 hover:bg-charcoal-800/50 transition-all"
+                className="text-left px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-ink-700 hover:border-coral-300 hover:bg-gray-50 transition-all"
               >
                 {s}
               </button>
@@ -136,7 +147,6 @@ export default function AsistenteView() {
         )}
       </div>
 
-      {/* Input */}
       <div className="mt-4 flex gap-2">
         <input
           ref={inputRef}
@@ -146,12 +156,12 @@ export default function AsistenteView() {
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(input); } }}
           placeholder="Escribe tu pregunta..."
           disabled={loading || !ready}
-          className="flex-1 px-4 py-3 bg-charcoal-800/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50 disabled:opacity-50"
+          className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-ink-900 placeholder-ink-400 outline-none focus:border-lapis-400/60 disabled:opacity-50"
         />
         <button
           onClick={() => enviarMensaje(input)}
           disabled={loading || !input.trim() || !ready}
-          className="px-4 py-3 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-3 bg-lapis-500 text-white rounded-xl hover:bg-lapis-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-lapis-500/20"
         >
           <IconSend width={18} height={18} />
         </button>

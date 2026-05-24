@@ -99,12 +99,12 @@ export default function RecordatoriosView() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">Recordatorios de pago</h2>
-        <p className="text-sm text-charcoal-400">{familiasMorosas.length} familias con pagos pendientes · {totalFacturasPendientes} facturas · {totalMoroso.toLocaleString("es-ES", { style: "currency", currency: "EUR" })} total</p>
+        <p className="text-sm text-ink-500">{familiasMorosas.length} familias con pagos pendientes · {totalFacturasPendientes} facturas · {totalMoroso.toLocaleString("es-ES", { style: "currency", currency: "EUR" })} total</p>
       </div>
 
       {statusMsg && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
-          statusMsg.ok ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-red-500/10 text-red-400 border border-red-500/30"
+          statusMsg.ok ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-red-50 text-red-600 border border-red-200"
         }`}>
           {statusMsg.ok ? <IconCheck /> : <IconAlert />}
           {statusMsg.msg}
@@ -112,40 +112,40 @@ export default function RecordatoriosView() {
       )}
 
       {familiasMorosas.length === 0 ? (
-        <div className="bg-charcoal-800/30 border border-charcoal-700/50 rounded-2xl p-12 text-center">
-          <IconCheck width={48} height={48} className="mx-auto mb-3 text-emerald-400" />
-          <p className="text-lg font-medium text-emerald-400">¡Todo al día!</p>
-          <p className="text-sm text-charcoal-400 mt-1">No hay familias con pagos pendientes.</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-12 text-center">
+          <IconCheck width={48} height={48} className="mx-auto mb-3 text-emerald-600" />
+          <p className="text-lg font-medium text-emerald-600">¡Todo al día!</p>
+          <p className="text-sm text-ink-500 mt-1">No hay familias con pagos pendientes.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {familiasMorosas.map(grupo => (
-            <div key={grupo.familia.id} className="bg-charcoal-800/30 border border-charcoal-700/50 rounded-2xl p-5">
+            <div key={grupo.familia.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-lg">{grupo.familia.nombre}</h3>
-                  <p className="text-sm text-charcoal-400">{grupo.familia.email}</p>
-                  <p className="text-sm text-charcoal-400">{grupo.familia.alumnos.length} alumnos</p>
+                  <p className="text-sm text-ink-500">{grupo.familia.email}</p>
+                  <p className="text-sm text-ink-500">{grupo.familia.alumnos.length} alumnos</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-red-400">{grupo.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</p>
-                  <p className="text-xs text-charcoal-500">{grupo.facturas.length} facturas pendientes</p>
+                  <p className="text-xl font-bold text-red-600">{grupo.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</p>
+                  <p className="text-xs text-ink-400">{grupo.facturas.length} facturas pendientes</p>
                 </div>
               </div>
 
               <div className="space-y-2 mb-4">
                 {grupo.facturas.map(f => (
-                  <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-charcoal-800/50">
+                  <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
                     <div className="flex items-center gap-3">
                       <span className={`w-2 h-2 rounded-full ${f.estado === "impago" ? "bg-red-500" : "bg-amber-500"}`} />
                       <div>
                         <p className="text-sm font-medium">{f.numero}</p>
-                        <p className="text-xs text-charcoal-500">{f.items?.[0]?.concepto || f.periodo} · {f.periodo}</p>
+                        <p className="text-xs text-ink-400">{f.items?.[0]?.concepto || f.periodo} · {f.periodo}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{f.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</p>
-                      <p className={`text-xs ${f.estado === "impago" ? "text-red-400" : "text-amber-400"}`}>{f.estado === "impago" ? "Vencida" : "Pendiente"}</p>
+                      <p className={`text-xs ${f.estado === "impago" ? "text-red-600" : "text-amber-600"}`}>{f.estado === "impago" ? "Vencida" : "Pendiente"}</p>
                     </div>
                   </div>
                 ))}
@@ -155,7 +155,7 @@ export default function RecordatoriosView() {
                 <button
                   onClick={() => enviarRecordatorio(grupo.familia.id, "cortesia")}
                   disabled={sendingId === grupo.familia.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-coral-500/20 text-coral-400 border border-coral-500/30 rounded-xl hover:bg-coral-500/30 transition-colors text-sm disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-coral-50 text-coral-500 border border-coral-200 rounded-xl hover:bg-coral-100 transition-colors text-sm disabled:opacity-50"
                 >
                   {sendingId === grupo.familia.id ? <IconRefresh className="animate-spin" /> : <IconSend />}
                   Recordatorio amable
@@ -163,7 +163,7 @@ export default function RecordatoriosView() {
                 <button
                   onClick={() => enviarRecordatorio(grupo.familia.id, "impago")}
                   disabled={sendingId === grupo.familia.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/30 transition-colors text-sm disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-500/30 transition-colors text-sm disabled:opacity-50"
                 >
                   {sendingId === grupo.familia.id ? <IconRefresh className="animate-spin" /> : <IconAlert />}
                   Aviso impago
@@ -178,10 +178,10 @@ export default function RecordatoriosView() {
       {historial.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-3">Últimos recordatorios enviados</h3>
-          <div className="bg-charcoal-800/20 border border-charcoal-700/50 rounded-2xl overflow-hidden">
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-charcoal-700/50 text-charcoal-400 text-xs uppercase">
+                <tr className="border-b border-gray-200 text-ink-500 text-xs uppercase">
                   <th className="text-left px-4 py-3 font-medium">Fecha</th>
                   <th className="text-left px-4 py-3 font-medium">Familia</th>
                   <th className="text-left px-4 py-3 font-medium">Tipo</th>
@@ -191,20 +191,20 @@ export default function RecordatoriosView() {
               </thead>
               <tbody>
                 {historial.map(h => (
-                  <tr key={h.id} className="border-b border-charcoal-800/50">
-                    <td className="px-4 py-3 text-charcoal-400">{h.fecha}</td>
+                  <tr key={h.id} className="border-b border-gray-100">
+                    <td className="px-4 py-3 text-ink-500">{h.fecha}</td>
                     <td className="px-4 py-3 font-medium">{h.familiaNombre}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${h.tipo === "cortesia" ? "bg-coral-500/20 text-coral-400" : "bg-red-500/20 text-red-400"}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${h.tipo === "cortesia" ? "bg-coral-50 text-coral-500" : "bg-red-50 text-red-600"}`}>
                         {h.tipo === "cortesia" ? "Cortesía" : "Impago"}
                       </span>
                     </td>
                     <td className="px-4 py-3">{h.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</td>
                     <td className="px-4 py-3">
                       {h.enviado ? (
-                        <span className="text-emerald-400 text-xs flex items-center gap-1"><IconCheck width={12} height={12}/> Enviado</span>
+                        <span className="text-emerald-600 text-xs flex items-center gap-1"><IconCheck width={12} height={12}/> Enviado</span>
                       ) : (
-                        <span className="text-amber-400 text-xs flex items-center gap-1"><IconAlert width={12} height={12}/> No enviado (demo)</span>
+                        <span className="text-amber-600 text-xs flex items-center gap-1"><IconAlert width={12} height={12}/> No enviado (demo)</span>
                       )}
                     </td>
                   </tr>

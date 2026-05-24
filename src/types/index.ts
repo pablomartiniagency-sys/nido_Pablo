@@ -22,7 +22,7 @@ export type Recurrencia = "puntual" | "mensual" | "trimestral" | "anual";
 export type Gasto = {
   id: string; fecha: string; proveedor: string; concepto: string;
   importe: number; iva: number; categoria: CategoriaGasto;
-  recurrencia: Recurrencia; notas?: string; ocr?: boolean;
+  recurrencia: Recurrencia; notas?: string; ocr?: boolean; archivoOriginal?: string;
 };
 
 export type Empleado = {
@@ -52,4 +52,14 @@ export type Incidencia = {
   tipo: "caida"|"fiebre"|"alergia"|"conflicto"|"otro";
   descripcion: string; gravedad: "leve"|"moderada"|"grave";
   notificada: boolean; resuelta: boolean; fecha: string;
+};
+
+export type Tarea = {
+  id: string;
+  titulo: string;
+  descripcion?: string;
+  fecha?: string;
+  completada: boolean;
+  creadaPor: "ia" | "manual";
+  createdAt: string;
 };

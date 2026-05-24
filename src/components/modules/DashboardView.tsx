@@ -25,8 +25,8 @@ export function DashboardView() {
   return (
     <div className="space-y-8 animate-fadeIn">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-sm text-white/50 mt-1">Resumen ejecutivo — datos actualizados en tiempo real</p>
+        <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Dashboard</h1>
+        <p className="text-sm text-ink-500 mt-1">Resumen ejecutivo — datos actualizados en tiempo real</p>
       </div>
 
       {alertas.length > 0 && (
@@ -37,15 +37,15 @@ export function DashboardView() {
               <div key={a.titulo} className={`card p-4 flex items-start justify-between gap-4 border-l-2 ${a.tipo === "critica" ? "border-l-red-500" : a.tipo === "aviso" ? "border-l-amber-500" : "border-l-blue-500"}`}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <IconAlert width={14} height={14} className={a.tipo === "critica" ? "text-red-400" : a.tipo === "aviso" ? "text-amber-400" : "text-blue-400"} />
-                    <span className="text-sm font-semibold text-white">{a.titulo}</span>
+                    <IconAlert width={14} height={14} className={a.tipo === "critica" ? "text-red-600" : a.tipo === "aviso" ? "text-amber-600" : "text-blue-600"} />
+                    <span className="text-sm font-semibold text-ink-900">{a.titulo}</span>
                     <Badge variant={a.tipo === "critica" ? "danger" : a.tipo === "aviso" ? "warning" : "info"}>{a.tipo}</Badge>
                   </div>
-                  <p className="text-sm text-white/60">{a.detalle}</p>
+                  <p className="text-sm text-ink-600">{a.detalle}</p>
                 </div>
                 {a.accion && (
                   <button onClick={() => setAlertasDismissed(prev => [...prev, a.titulo])}
-                    className="text-xs text-coral-400 hover:text-coral-300 whitespace-nowrap shrink-0">
+                    className="text-xs text-coral-500 hover:text-coral-500 whitespace-nowrap shrink-0">
                     {a.accion}
                   </button>
                 )}
@@ -75,7 +75,7 @@ export function DashboardView() {
           <div className="space-y-3">
             {facturas.filter(f => f.estado === "pagada").slice(0, 5).map(f => (
               <div key={f.id} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-                <div><div className="text-sm font-medium text-white">{f.familia}</div><div className="text-xs text-white/40">{f.periodo}</div></div>
+                <div><div className="text-sm font-medium text-ink-900">{f.familia}</div><div className="text-xs text-ink-500">{f.periodo}</div></div>
                 <Badge variant="success">{eur(f.total)}</Badge>
               </div>
             ))}
@@ -87,12 +87,12 @@ export function DashboardView() {
           <div className="space-y-3">
             {facturas.filter(f => f.estado === "impago").slice(0, 5).map(f => (
               <div key={f.id} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-                <div><div className="text-sm font-medium text-white">{f.familia}</div><div className="text-xs text-white/40">{f.diasImpago} días de impago · {f.numero}</div></div>
+                <div><div className="text-sm font-medium text-ink-900">{f.familia}</div><div className="text-xs text-ink-500">{f.diasImpago} días de impago · {f.numero}</div></div>
                 <Badge variant="danger">{eur(f.total)}</Badge>
               </div>
             ))}
             {facturas.filter(f => f.estado === "impago").length === 0 && (
-              <p className="text-sm text-white/40 text-center py-4">✅ No hay impagos</p>
+              <p className="text-sm text-ink-500 text-center py-4">✅ No hay impagos</p>
             )}
           </div>
           <Button variant="ghost" size="sm" className="mt-4 w-full" onClick={() => router.push("/asistente")}>Consultar al agente IA</Button>

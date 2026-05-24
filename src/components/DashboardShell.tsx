@@ -21,7 +21,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-grid bg-glow">
       {isDemo && demoMinutesLeft <= 10 && (
-        <div className="bg-amber-500/15 border-b border-amber-500/25 px-6 py-2 text-center text-sm text-amber-300">
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-center text-sm text-amber-700">
           ⏳ Tu sesión demo expira en {demoMinutesLeft} minutos. Los datos se perderán al cerrar sesión.
         </div>
       )}
@@ -44,21 +44,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 function DashboardLoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-8 w-48 bg-white/5 rounded-lg" />
-      <div className="h-4 w-72 bg-white/5 rounded-lg" />
+      <div className="h-8 w-48 bg-gray-200 rounded-lg" />
+      <div className="h-4 w-72 bg-gray-200 rounded-lg" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 bg-white/5 rounded-2xl" />
+          <div key={i} className="h-24 bg-gray-100 rounded-2xl" />
         ))}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 bg-white/5 rounded-2xl" />
+          <div key={i} className="h-24 bg-gray-100 rounded-2xl" />
         ))}
       </div>
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="h-64 bg-white/5 rounded-2xl" />
-        <div className="h-64 bg-white/5 rounded-2xl" />
+        <div className="h-64 bg-gray-100 rounded-2xl" />
+        <div className="h-64 bg-gray-100 rounded-2xl" />
       </div>
     </div>
   );

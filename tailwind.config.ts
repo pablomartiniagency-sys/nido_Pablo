@@ -10,13 +10,28 @@ const config = {
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
         border: "hsl(var(--border))", input: "hsl(var(--input))", ring: "hsl(var(--ring))",
-        coral: { 300:"#FF9E6D", 400:"#F87D4A", 500:"#F28A5C", 600:"#E36A34", 700:"#C65424" },
-        ink:   { 900:"#0E0E10", 800:"#131316", 700:"#17171B", 600:"#1D1D22" },
-        chalk: { 200:"#D9D3C0", 300:"#C9C1AE", 400:"#9A9487", 500:"#6E6A60" },
-        charcoal: { 900:"#0E0E10", 800:"#131316", 700:"#17171B", 600:"#1D1D22", 500:"#2A2A32", 400:"#3A3A44", 300:"#4E4E5A", 200:"#6A6A76" },
+        lapis: {
+          50: "#EFF6FC", 100: "#CEE1F2", 200: "#A5C8E8", 300: "#71A8D9",
+          400: "#4A8AC9", 500: "#26619C", 600: "#1F4E7E", 700: "#183B5F",
+          800: "#112840", 900: "#0A1521",
+        },
+        ink: {
+          900: "#1A1A2E", 800: "#2D2D44", 700: "#3D3D54", 600: "#4E4E64",
+          500: "#6B6B82", 400: "#8E8EA3", 300: "#B0B0C0", 200: "#D0D0DC",
+          100: "#E8E8F0", 50: "#F5F5FA",
+        },
+        coral: {
+          300: "#FFA07A", 400: "#F58549", 500: "#E36A34", 600: "#C65424",
+          700: "#A0431A",
+        },
       },
       borderRadius: { lg: "var(--radius)" },
-      boxShadow: { "glow-coral": "0 0 20px rgba(249,115,22,0.15)" },
+      boxShadow: {
+        "glow-lapis": "0 0 20px rgba(38,97,156,0.15)",
+        "glow-coral": "0 0 20px rgba(227,106,52,0.12)",
+        "card": "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03)",
+        "card-hover": "0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)",
+      },
       keyframes: {
         fadeIn:    { "0%": { opacity:"0", transform:"translateY(6px)" }, "100%": { opacity:"1", transform:"translateY(0)" } },
         pulseSoft: { "0%,100%": { opacity:"1" }, "50%": { opacity:"0.55" } },

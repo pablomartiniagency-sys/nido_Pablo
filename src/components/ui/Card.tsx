@@ -20,5 +20,5 @@ export function CardHeader({ children, className }: { children: ReactNode; class
 }
 
 export function CardTitle({ children, className }: { children: ReactNode; className?: string }) {
-  return <h3 className={cn("text-sm font-semibold text-white", className)}>{children}</h3>;
+  return <h3 className={cn("text-sm font-semibold text-ink-900", className)}>{children}</h3>;
 }
