@@ -35,6 +35,7 @@ export function ContabilidadView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editGastoId, setEditGastoId] = useState<string | null>(null);
   const [ocrFileName, setOcrFileName] = useState<string>("");
+  const [ocrData, setOcrData] = useState<{ proveedor: string; fecha: string; importe: number; iva: number; categoria: string; textoExtraido: string; } | null>(null);
   const [asientosManuales, setAsientosManuales] = useState<AsientoManual[]>([]);
   const [showAsientoModal, setShowAsientoModal] = useState(false);
   const [asientoForm, setAsientoForm] = useState({ fecha: new Date().toISOString().split("T")[0], concepto: "", importe: "", tipo: "gasto" as "ingreso" | "gasto", categoria: "otros" });
@@ -142,6 +143,14 @@ export function ContabilidadView() {
 
       const ocr = data.ocr;
       setOcrFileName(ocrFile.name);
+      setOcrData({
+        proveedor: ocr.proveedor || "",
+        fecha: ocr.fecha || "",
+        importe: parseFloat(ocr.importe) || 0,
+        iva: parseInt(ocr.iva) || 21,
+        categoria: ocr.categoria || "otros",
+        textoExtraido: ocr.notas || "",
+      });
       setForm({
         proveedor: ocr.proveedor || "",
         concepto: ocr.concepto || "",
@@ -194,6 +203,7 @@ export function ContabilidadView() {
         notas: form.notas,
         ocr: !!ocrFileName,
         archivoOriginal: ocrFileName || undefined,
+        ocrRef: ocrData ? { ...ocrData, fechaOCR: new Date().toISOString().slice(0, 10) } : undefined,
       };
       addGasto(newGasto);
       toast(`Gasto registrado: ${form.proveedor} — ${eur(importeNum)}`);
@@ -201,6 +211,7 @@ export function ContabilidadView() {
     setShowModal(false);
     setEditGastoId(null);
     setOcrFileName("");
+    setOcrData(null);
     setForm({ proveedor: "", concepto: "", importe: "", iva: "21", categoria: "otros", recurrencia: "puntual", fecha: new Date().toISOString().split("T")[0], notas: "" });
   };
 
@@ -353,7 +364,7 @@ export function ContabilidadView() {
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
+                  <tr className="border-b border-gray-200/60">
                     <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Mes</th>
                     <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Ingresos</th>
                     <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Gastos</th>
@@ -362,7 +373,7 @@ export function ContabilidadView() {
                 </thead>
                 <tbody>
                   {financialStatement.balanceMensual.map(m => (
-                    <tr key={m.mes} className="border-b border-white/[0.03]">
+                    <tr key={m.mes} className="border-b border-gray-100">
                       <td className="py-3 px-3 text-ink-900 font-medium">{m.mes}</td>
                       <td className="py-3 px-3 text-right text-emerald-600">{eur(m.ingresos)}</td>
                       <td className="py-3 px-3 text-right text-red-600">{eur(m.gastos)}</td>
@@ -379,7 +390,7 @@ export function ContabilidadView() {
               <CardHeader><CardTitle>Gastos por categoría</CardTitle></CardHeader>
               <div className="space-y-2">
                 {porCategoria.map(([cat, total]) => (
-                  <div key={cat} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
+                  <div key={cat} className="flex items-center justify-between py-2 border-b border-gray-200/40 last:border-0">
                     <span className="text-sm text-ink-700 capitalize">{cat}</span>
                     <div className="flex items-center gap-3">
                       <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -418,7 +429,7 @@ export function ContabilidadView() {
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-gray-200/60">
                   <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Fecha</th>
                   <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Concepto</th>
                   <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Categoría</th>
@@ -430,7 +441,7 @@ export function ContabilidadView() {
               <tbody>
                 {asientos.map((a, i) => {
                               return (
-                    <tr key={i} className="border-b border-white/[0.03] hover:bg-gray-50">
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-3 text-ink-600 text-xs">{a.fecha}</td>
                       <td className="py-3 px-3 text-ink-900">{a.concepto}</td>
                       <td className="py-3 px-3">
@@ -496,6 +507,29 @@ export function ContabilidadView() {
             <label className="block text-sm font-medium text-ink-700">Notas</label>
             <textarea className="input w-full h-20 resize-none" placeholder="Observaciones adicionales (opcional)" value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} />
           </div>
+          {editGastoId && (() => { const g = gastos.find(gx => gx.id === editGastoId); return g?.ocrRef ? (
+            <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Referencia OCR — Auditoría</div>
+              <div className="space-y-1 text-xs text-ink-600">
+                <div className="flex justify-between"><span>Proveedor detectado</span><span className="text-ink-900 font-medium">{g.ocrRef.proveedor}</span></div>
+                <div className="flex justify-between"><span>Importe detectado</span><span className="text-ink-900 font-medium">{g.ocrRef.importe}€</span></div>
+                <div className="flex justify-between"><span>IVA detectado</span><span className="text-ink-900 font-medium">{g.ocrRef.iva}%</span></div>
+                <div className="flex justify-between"><span>Categoría detectada</span><span className="text-ink-900 font-medium">{g.ocrRef.categoria}</span></div>
+                <div className="flex justify-between"><span>Fecha OCR</span><span className="text-ink-900 font-medium">{g.ocrRef.fechaOCR}</span></div>
+              </div>
+              {g.ocrRef.textoExtraido && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">Texto extraído</div>
+                  <pre className="text-[10px] text-ink-400 whitespace-pre-wrap leading-relaxed max-h-24 overflow-y-auto">{g.ocrRef.textoExtraido}</pre>
+                </div>
+              )}
+            </div>
+          ) : g?.archivoOriginal ? (
+            <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">Archivo original</div>
+              <div className="text-xs text-ink-600">{g.archivoOriginal}</div>
+            </div>
+          ) : null; })()}
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>

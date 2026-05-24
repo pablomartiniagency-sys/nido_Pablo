@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Tarea } from "@/types";
+import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Tarea, CargoPendiente } from "@/types";
 import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad, EscuelaConfig } from "@/types/crm";
-import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS } from "./mock";
+import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS, CARGOS_PENDIENTES } from "./mock";
 import { ALUMNOS_PERFILES, ASISTENCIA, LEADS, OPORTUNIDADES } from "./crm-mock";
 import { clasificarGasto } from "@/lib/ai/simulated";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -22,6 +22,7 @@ export interface StoreData {
   oportunidades: Oportunidad[];
   configuracion: EscuelaConfig;
   tareas: Tarea[];
+  cargosPendientes: CargoPendiente[];
 }
 
 export interface BalanceItem {
@@ -48,7 +49,7 @@ let idCounter = Date.now();
 export function genId(prefix = "id") { return `${prefix}-${++idCounter}`; }
 export function nextFacturaNum() { return `F-2026-${String(FACTURAS.length + GASTOS.length + 1).padStart(3, "0")}`; }
 
-interface DashboardMetrics {
+export interface DashboardMetrics {
   familiasCount: number;
   totalAlumnos: number;
   cobrado: number;
@@ -58,6 +59,8 @@ interface DashboardMetrics {
   morosos: number;
   empleadosActivos: number;
   nominaTotal: number;
+  cargosPendientesTotal: number;
+  cargosVencidosCount: number;
 }
 
 interface StoreActions {
@@ -101,6 +104,9 @@ interface StoreActions {
   addTarea: (t: Tarea) => void;
   updateTarea: (id: string, changes: Partial<Tarea>) => void;
   removeTarea: (id: string) => void;
+  addCargo: (c: CargoPendiente) => void;
+  updateCargo: (id: string, changes: Partial<CargoPendiente>) => void;
+  removeCargo: (id: string) => void;
 }
 
 type StoreContextType = StoreData & StoreActions;
@@ -113,7 +119,7 @@ const DATA_VACIO: StoreData = {
   familias: [], facturas: [], gastos: [], empleados: [], nominas: [],
   suministros: [], menu: { lunes: { primero: "", segundo: "", postre: "" }, martes: { primero: "", segundo: "", postre: "" }, miercoles: { primero: "", segundo: "", postre: "" }, jueves: { primero: "", segundo: "", postre: "" }, viernes: { primero: "", segundo: "", postre: "" } },
   incidencias: [], alumnos: [], asistencia: [], leads: [], oportunidades: [],
-  configuracion: CONFIG_DEFECTO, tareas: [],
+  configuracion: CONFIG_DEFECTO, tareas: [], cargosPendientes: [],
 };
 
 const DATA_DEMO: StoreData = {
@@ -123,7 +129,7 @@ const DATA_DEMO: StoreData = {
   alumnos: ALUMNOS_PERFILES, asistencia: ASISTENCIA,
   leads: LEADS, oportunidades: OPORTUNIDADES,
   configuracion: { ...CONFIG_DEFECTO, nombre: "Escuela Infantil Nido Demo" },
-  tareas: [],
+  tareas: [], cargosPendientes: CARGOS_PENDIENTES,
 };
 
 function loadFromStorage(key: string): { data: StoreData | null; defaults: StoreData } {
@@ -248,8 +254,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addTarea = useCallback((t: Tarea) => setData(p => ({ ...p, tareas: [...p.tareas, t] })), []);
   const updateTarea = useCallback((id: string, changes: Partial<Tarea>) => setData(p => ({ ...p, tareas: p.tareas.map(t => t.id === id ? { ...t, ...changes } : t) })), []);
   const removeTarea = useCallback((id: string) => setData(p => ({ ...p, tareas: p.tareas.filter(t => t.id !== id) })), []);
+  const addCargo = useCallback((c: CargoPendiente) => setData(p => ({ ...p, cargosPendientes: [...p.cargosPendientes, c] })), []);
+  const updateCargo = useCallback((id: string, changes: Partial<CargoPendiente>) => setData(p => ({ ...p, cargosPendientes: p.cargosPendientes.map(c => c.id === id ? { ...c, ...changes } : c) })), []);
+  const removeCargo = useCallback((id: string) => setData(p => ({ ...p, cargosPendientes: p.cargosPendientes.filter(c => c.id !== id) })), []);
 
   const dashboardMetrics = useMemo(() => {
+    const cargosPendientesTotal = data.cargosPendientes.filter(c => c.estado === "pendiente").reduce((s, c) => s + c.importe, 0);
+    const cargosVencidos = data.cargosPendientes.filter(c => c.estado === "pendiente" && c.fechaVencimiento < new Date().toISOString().slice(0, 10));
     return {
       familiasCount: data.familias.length,
       totalAlumnos: data.alumnos.length,
@@ -260,6 +271,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       morosos: data.facturas.filter(f => f.estado === "impago").length,
       empleadosActivos: data.empleados.filter(e => e.activo).length,
       nominaTotal: data.nominas.filter(n => n.periodo === "Mayo 2026").reduce((s, n) => s + n.bruto, 0),
+      cargosPendientesTotal,
+      cargosVencidosCount: cargosVencidos.length,
     };
   }, [data]);
 
@@ -320,6 +333,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addOportunidad, updateOportunidad, removeOportunidad,
     updateConfiguracion,
     addTarea, updateTarea, removeTarea,
+    addCargo, updateCargo, removeCargo,
     generarNominasMes, generarAsientosContables, clasificarGasto,
   };
 

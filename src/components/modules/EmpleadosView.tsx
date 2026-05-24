@@ -57,9 +57,9 @@ export function EmpleadosView() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4"><div className="label mb-1">Plantilla activa</div><div className="text-xl font-bold text-white">{activos.length}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Coste bruto mensual</div><div className="text-xl font-bold text-white">{eur(costeTotal)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Coste SS empresa</div><div className="text-xl font-bold text-white">{eur(costeTotal * 0.296)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Plantilla activa</div><div className="text-xl font-bold text-ink-900">{activos.length}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Coste bruto mensual</div><div className="text-xl font-bold text-ink-900">{eur(costeTotal)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Coste SS empresa</div><div className="text-xl font-bold text-ink-900">{eur(costeTotal * 0.296)}</div></Card>
         <Card className="p-4"><div className="label mb-1">Incidencias abiertas</div><div className="text-xl font-bold text-amber-400">{incidencias.filter(i => !i.resuelta).length}</div></Card>
       </div>
 
@@ -68,16 +68,16 @@ export function EmpleadosView() {
           <Card key={e.id} hover className="cursor-pointer" onClick={() => openEdit(e)}>
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-white">{e.nombre}</h3>
-                <p className="text-xs text-white/40">{e.puesto}</p>
+                <h3 className="text-sm font-semibold text-ink-900">{e.nombre}</h3>
+                <p className="text-xs text-ink-500">{e.puesto}</p>
               </div>
               <Badge variant={e.tipoContrato === "indefinido" ? "success" : e.tipoContrato === "practicas" ? "info" : "warning"}>{e.tipoContrato}</Badge>
             </div>
-            <div className="space-y-1.5 text-xs text-white/50">
-              <div className="flex justify-between"><span>Bruto mensual</span><span className="text-white font-medium">{eur(e.salarioBrutoMensual)}</span></div>
-              <div className="flex justify-between"><span>Horas/semana</span><span className="text-white font-medium">{e.horasSemanales}h</span></div>
-              <div className="flex justify-between"><span>DNI</span><span className="text-white/40 font-mono text-[10px]">{e.dni}</span></div>
-              <div className="flex justify-between"><span>Desde</span><span className="text-white font-medium">{e.fechaAlta}</span></div>
+            <div className="space-y-1.5 text-xs text-ink-500">
+              <div className="flex justify-between"><span>Bruto mensual</span><span className="text-ink-900 font-medium">{eur(e.salarioBrutoMensual)}</span></div>
+              <div className="flex justify-between"><span>Horas/semana</span><span className="text-ink-900 font-medium">{e.horasSemanales}h</span></div>
+              <div className="flex justify-between"><span>DNI</span><span className="text-ink-400 font-mono text-[10px]">{e.dni}</span></div>
+              <div className="flex justify-between"><span>Desde</span><span className="text-ink-900 font-medium">{e.fechaAlta}</span></div>
             </div>
           </Card>
         ))}
@@ -87,18 +87,18 @@ export function EmpleadosView() {
         <CardHeader><CardTitle>Incidencias activas</CardTitle></CardHeader>
         <div className="space-y-3">
           {incidencias.filter(i => !i.resuelta).length === 0 ? (
-            <p className="text-sm text-white/40">No hay incidencias activas</p>
+            <p className="text-sm text-ink-500">No hay incidencias activas</p>
           ) : (
             incidencias.filter(i => !i.resuelta).map(i => (
-              <div key={i.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <div key={i.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200/60">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${i.gravedad === "grave" ? "bg-red-400" : i.gravedad === "moderada" ? "bg-amber-400" : "bg-blue-400"}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white">{i.alumno}</span>
+                    <span className="text-sm font-medium text-ink-900">{i.alumno}</span>
                     <Badge variant={i.gravedad === "grave" ? "danger" : i.gravedad === "moderada" ? "warning" : "info"}>{i.gravedad}</Badge>
-                    <span className="text-[10px] text-white/30">{i.fecha}</span>
+                    <span className="text-[10px] text-ink-400">{i.fecha}</span>
                   </div>
-                  <p className="text-xs text-white/50 mt-0.5">{i.descripcion}</p>
+                  <p className="text-xs text-ink-500 mt-0.5">{i.descripcion}</p>
                 </div>
               </div>
             ))

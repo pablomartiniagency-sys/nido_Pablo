@@ -91,18 +91,18 @@ export function NominasView() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="p-4"><div className="label mb-1">Bruto total</div><div className="text-lg font-bold text-white">{eur(totales.bruto)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">IRPF</div><div className="text-lg font-bold text-white">{eur(totales.irpf)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">SS empleado</div><div className="text-lg font-bold text-white">{eur(totales.ssEmpleado)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">SS empresa</div><div className="text-lg font-bold text-white">{eur(totales.ssEmpresa)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Bruto total</div><div className="text-lg font-bold text-ink-900">{eur(totales.bruto)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">IRPF</div><div className="text-lg font-bold text-ink-900">{eur(totales.irpf)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">SS empleado</div><div className="text-lg font-bold text-ink-900">{eur(totales.ssEmpleado)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">SS empresa</div><div className="text-lg font-bold text-ink-900">{eur(totales.ssEmpresa)}</div></Card>
         <Card className="p-4"><div className="label mb-1">Neto total</div><div className="text-lg font-bold text-emerald-400">{eur(totales.neto)}</div></Card>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4"><div className="label mb-1">Coste total empresa</div><div className="text-lg font-bold text-white">{eur(totales.bruto + totales.ssEmpresa)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Pagadas</div><div className="text-lg font-bold text-white">{totales.pagadas}/{totales.total}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Retención IRPF</div><div className="text-lg font-bold text-white">{eur(totales.irpf)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">A ingresar SS</div><div className="text-lg font-bold text-white">{eur(totales.ssEmpleado + totales.ssEmpresa)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Coste total empresa</div><div className="text-lg font-bold text-ink-900">{eur(totales.bruto + totales.ssEmpresa)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Pagadas</div><div className="text-lg font-bold text-ink-900">{totales.pagadas}/{totales.total}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Retención IRPF</div><div className="text-lg font-bold text-ink-900">{eur(totales.irpf)}</div></Card>
+        <Card className="p-4"><div className="label mb-1">A ingresar SS</div><div className="text-lg font-bold text-ink-900">{eur(totales.ssEmpleado + totales.ssEmpresa)}</div></Card>
       </div>
 
       <Card>

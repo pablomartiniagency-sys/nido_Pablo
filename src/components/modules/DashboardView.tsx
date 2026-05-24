@@ -7,20 +7,20 @@ import { KPI } from "@/components/ui/KPI";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { IconEuro, IconAlert, IconUsers, IconBolt } from "@/components/ui/Icons";
+import { IconEuro, IconAlert, IconUsers, IconBolt, IconBell } from "@/components/ui/Icons";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function DashboardView() {
-  const { facturas, gastos, suministros, dashboardMetrics } = useStore();
+  const { facturas, gastos, suministros, cargosPendientes, dashboardMetrics } = useStore();
   const router = useRouter();
   const [alertasDismissed, setAlertasDismissed] = useState<string[]>([]);
 
   const alertas = useMemo(() => {
-    return detectarAlertas({ facturas, gastos, suministros }).filter(a => !alertasDismissed.includes(a.titulo));
-  }, [facturas, gastos, suministros, alertasDismissed]);
+    return detectarAlertas({ facturas, gastos, suministros, cargosPendientes }).filter(a => !alertasDismissed.includes(a.titulo));
+  }, [facturas, gastos, suministros, cargosPendientes, alertasDismissed]);
 
-  const { familiasCount, totalAlumnos, cobrado, pendiente, gastoMes, resultado, morosos, empleadosActivos, nominaTotal } = dashboardMetrics;
+  const { familiasCount, totalAlumnos, cobrado, pendiente, gastoMes, resultado, morosos, empleadosActivos, nominaTotal, cargosPendientesTotal, cargosVencidosCount } = dashboardMetrics;
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -66,10 +66,33 @@ export function DashboardView() {
         <KPI label="Empleados" value={String(empleadosActivos)} subtitle={`Coste ${eur(nominaTotal)}/mes`} trend={empleadosActivos > 0 ? "up" : "neutral"} />
         <KPI label="Gasto del mes" value={eur(gastoMes)} subtitle="junio 2026" trend="neutral" />
         <KPI label="Morosos" value={String(morosos)} trend="down" subtitle={morosos === 1 ? "1 familia" : `${morosos} familias`} />
-        <KPI label="Ratio alumn/prof" value={empleadosActivos > 0 ? `${(totalAlumnos / empleadosActivos).toFixed(1)}:1` : "—"} subtitle="alumnos/empleado" />
+        <KPI label="Cargos pendientes" value={eur(cargosPendientesTotal)} icon={<IconBell width={16} height={16} />} trend={cargosVencidosCount > 0 ? "down" : "neutral"} subtitle={`${cargosVencidosCount} vencidos`} />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Cargos pendientes por alumno</CardTitle></CardHeader>
+          <div className="space-y-3">
+            {cargosPendientes.filter(c => c.estado === "pendiente").slice(0, 6).map(c => (
+              <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-200/40 last:border-0">
+                <div>
+                  <div className="text-sm font-medium text-ink-900">{c.alumnoNombre}</div>
+                  <div className="text-xs text-ink-500">{c.concepto} · {c.tipo}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-semibold text-ink-900">{eur(c.importe)}</span>
+                  {c.fechaVencimiento < new Date().toISOString().slice(0, 10) && (
+                    <div className="text-[10px] text-red-500 font-medium">VENCIDO</div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {cargosPendientes.filter(c => c.estado === "pendiente").length === 0 && (
+              <p className="text-sm text-ink-500 text-center py-4">✅ No hay cargos pendientes</p>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" className="mt-4 w-full" onClick={() => router.push("/familias")}>Gestionar cargos</Button>
+        </Card>
         <Card>
           <CardHeader><CardTitle>Últimos cobros</CardTitle></CardHeader>
           <div className="space-y-3">
@@ -101,9 +124,10 @@ export function DashboardView() {
 
       <Card>
         <CardHeader><CardTitle>Acciones rápidas</CardTitle></CardHeader>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Button variant="secondary" size="sm" onClick={() => router.push("/contabilidad")}>Subir factura (OCR)</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/facturacion")}>Generar remesa SEPA</Button>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/familias")}>Gestionar cargos</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/asistente")}>Preguntar al agente IA</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/previsiones")}>Ver balance financiero</Button>
         </div>

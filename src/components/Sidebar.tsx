@@ -6,7 +6,7 @@ import { useStore } from "@/lib/data/useStore";
 import {
   IconDashboard, IconAccounting, IconInvoice, IconFamilies,
   IconChat, IconForecast, IconBolt, IconBowl, IconUsers, IconPayroll, IconSettings, IconLogout,
-  IconGraduation, IconTrendingUp, IconBell, IconDownload, IconUpload, IconClipboard,
+  IconGraduation, IconTrendingUp, IconBell, IconDownload, IconUpload, IconClipboard, IconHelp,
 } from "@/components/ui/Icons";
 
 const ITEMS = [
@@ -27,6 +27,7 @@ const ITEMS = [
   { section:"sistema",  href:"/exportar",       label:"Exportar datos",icon:<IconDownload /> },
   { section:"sistema",  href:"/importar",       label:"Importar datos",icon:<IconUpload /> },
   { section:"sistema",  href:"/configuracion",  label:"Configuración",icon:<IconSettings /> },
+  { section:"sistema",  href:"/ayuda",          label:"Ayuda",         icon:<IconHelp /> },
 ];
 
 const SECCIONES = [

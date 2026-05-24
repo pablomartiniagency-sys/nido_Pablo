@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import { useStore } from "@/lib/data/useStore";
 import { IconSend, IconAlert, IconCheck, IconRefresh } from "@/components/ui/Icons";
+import { eur } from "@/lib/format";
+import type { CargoPendiente } from "@/types";
 
 interface HistorialRecordatorio {
   id: string;
@@ -15,13 +17,18 @@ interface HistorialRecordatorio {
 }
 
 export default function RecordatoriosView() {
-  const { facturas, familias } = useStore();
+  const { facturas, familias, cargosPendientes } = useStore();
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ ok: boolean; msg: string } | null>(null);
   const [historial, setHistorial] = useState<HistorialRecordatorio[]>([]);
 
   const familiasMorosas = useMemo(() => {
-    const grouped = new Map<string, { familia: typeof familias[0]; facturas: typeof facturas; total: number }>();
+    const grouped = new Map<string, {
+      familia: typeof familias[0];
+      facturas: typeof facturas;
+      cargos: CargoPendiente[];
+      total: number;
+    }>();
 
     facturas.filter(f => f.estado === "impago" || f.estado === "enviada").forEach(f => {
       const familia = familias.find(fa => fa.id === f.familiaId);
@@ -31,15 +38,28 @@ export default function RecordatoriosView() {
         existing.facturas.push(f);
         existing.total += f.total;
       } else {
-        grouped.set(f.familiaId, { familia, facturas: [f], total: f.total });
+        grouped.set(f.familiaId, { familia, facturas: [f], cargos: [], total: f.total });
+      }
+    });
+
+    cargosPendientes.filter(c => c.estado === "pendiente").forEach(c => {
+      const familia = familias.find(fa => fa.id === c.familiaId);
+      if (!familia) return;
+      const existing = grouped.get(c.familiaId);
+      if (existing) {
+        existing.cargos.push(c);
+        existing.total += c.importe;
+      } else {
+        grouped.set(c.familiaId, { familia, facturas: [], cargos: [c], total: c.importe });
       }
     });
 
     return Array.from(grouped.values()).sort((a, b) => b.total - a.total);
-  }, [facturas, familias]);
+  }, [facturas, familias, cargosPendientes]);
 
   const totalMoroso = familiasMorosas.reduce((s, f) => s + f.total, 0);
   const totalFacturasPendientes = familiasMorosas.reduce((s, f) => s + f.facturas.length, 0);
+  const totalCargosPendientes = familiasMorosas.reduce((s, f) => s + f.cargos.length, 0);
 
   const enviarRecordatorio = async (familiaId: string, tipo: "cortesia" | "impago") => {
     const grupo = familiasMorosas.find(f => f.familia.id === familiaId);
@@ -59,6 +79,12 @@ export default function RecordatoriosView() {
             numero: f.numero,
             periodo: f.periodo,
             total: f.total,
+          })),
+          cargos: grupo.cargos.map(c => ({
+            concepto: c.concepto,
+            alumnoNombre: c.alumnoNombre,
+            importe: c.importe,
+            fechaVencimiento: c.fechaVencimiento,
           })),
           tipo,
         }),
@@ -99,7 +125,7 @@ export default function RecordatoriosView() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">Recordatorios de pago</h2>
-        <p className="text-sm text-ink-500">{familiasMorosas.length} familias con pagos pendientes · {totalFacturasPendientes} facturas · {totalMoroso.toLocaleString("es-ES", { style: "currency", currency: "EUR" })} total</p>
+        <p className="text-sm text-ink-500">{familiasMorosas.length} familias con pagos pendientes · {totalFacturasPendientes} facturas · {totalCargosPendientes} cargos · {eur(totalMoroso)} total</p>
       </div>
 
       {statusMsg && (
@@ -128,8 +154,8 @@ export default function RecordatoriosView() {
                   <p className="text-sm text-ink-500">{grupo.familia.alumnos.length} alumnos</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-red-600">{grupo.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</p>
-                  <p className="text-xs text-ink-400">{grupo.facturas.length} facturas pendientes</p>
+                  <p className="text-xl font-bold text-red-600">{eur(grupo.total)}</p>
+                  <p className="text-xs text-ink-400">{grupo.facturas.length} facturas · {grupo.cargos.length} cargos pendientes</p>
                 </div>
               </div>
 
@@ -144,8 +170,25 @@ export default function RecordatoriosView() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{f.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</p>
+                      <p className="text-sm font-medium">{eur(f.total)}</p>
                       <p className={`text-xs ${f.estado === "impago" ? "text-red-600" : "text-amber-600"}`}>{f.estado === "impago" ? "Vencida" : "Pendiente"}</p>
+                    </div>
+                  </div>
+                ))}
+                {grupo.cargos.map(c => (
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50/50">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-2 h-2 rounded-full ${c.fechaVencimiento < new Date().toISOString().slice(0, 10) ? "bg-red-500" : "bg-amber-500"}`} />
+                      <div>
+                        <p className="text-sm font-medium">{c.concepto}</p>
+                        <p className="text-xs text-ink-400">{c.alumnoNombre} · Vence: {c.fechaVencimiento}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{eur(c.importe)}</p>
+                      <p className={`text-xs ${c.fechaVencimiento < new Date().toISOString().slice(0, 10) ? "text-red-600" : "text-amber-600"}`}>
+                        {c.fechaVencimiento < new Date().toISOString().slice(0, 10) ? "Vencido" : "Pendiente"}
+                      </p>
                     </div>
                   </div>
                 ))}

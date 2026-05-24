@@ -116,12 +116,12 @@ export function ConfiguracionView() {
         <Card>
           <CardHeader><CardTitle>Mi cuenta</CardTitle></CardHeader>
           <div className="space-y-4">
-            <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-              <span className="text-white/50 text-sm">Email</span>
-              <span className="text-white font-medium text-sm">{user?.email || "demo@nido.app"}</span>
+            <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
+              <span className="text-ink-500 text-sm">Email</span>
+              <span className="text-ink-900 font-medium text-sm">{user?.email || "demo@nido.app"}</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-              <span className="text-white/50 text-sm">Rol</span>
+            <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
+              <span className="text-ink-500 text-sm">Rol</span>
               <Badge variant={user?.role === "owner" ? "success" : user?.role === "staff" ? "info" : "warning"}>
                 {user?.role === "owner" ? "Propietario" : user?.role === "staff" ? "Personal" : "Demo"}
               </Badge>
@@ -134,7 +134,7 @@ export function ConfiguracionView() {
               </div>
             )}
             {showPasswordForm && (
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200/60 space-y-3">
                 <input className="input" type="password" placeholder="Nueva contraseña" value={passwordForm.newPass}
                   onChange={e => setPasswordForm(p => ({ ...p, newPass: e.target.value }))} />
                 <input className="input" type="password" placeholder="Confirmar contraseña" value={passwordForm.confirm}
@@ -150,8 +150,8 @@ export function ConfiguracionView() {
             {isDemo && (
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <div className="text-sm font-medium text-amber-300 mb-1">⏳ Sesión demo</div>
-                <div className="text-xs text-white/60">Tu sesión expira en <strong className="text-amber-300">{demoMinutesLeft} minutos</strong>.</div>
-                <div className="text-xs text-white/40 mt-2">Los datos se guardan en localStorage.</div>
+                <div className="text-xs text-ink-600">Tu sesión expira en <strong className="text-amber-700">{demoMinutesLeft} minutos</strong>.</div>
+                <div className="text-xs text-ink-500 mt-2">Los datos se guardan en localStorage.</div>
               </div>
             )}
             <div className="pt-4">
@@ -164,14 +164,14 @@ export function ConfiguracionView() {
         <Card>
           <CardHeader><CardTitle>Email (SMTP)</CardTitle></CardHeader>
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200/60 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white/50">Destino</span>
-                <span className="text-white font-mono text-xs">pablomartiniagency@gmail.com</span>
+                <span className="text-ink-500">Destino</span>
+                <span className="text-ink-900 font-mono text-xs">pablomartiniagency@gmail.com</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white/50">Host</span>
-                <span className="text-white/70 font-mono text-xs">{process.env.NEXT_PUBLIC_SMTP_HOST || "smtp.gmail.com"}</span>
+                <span className="text-ink-500">Host</span>
+                <span className="text-ink-700 font-mono text-xs">{process.env.NEXT_PUBLIC_SMTP_HOST || "smtp.gmail.com"}</span>
               </div>
             </div>
             <Button variant="secondary" size="sm" onClick={handleTestEmail} disabled={emailTesting}>
@@ -186,7 +186,7 @@ export function ConfiguracionView() {
                 <span>{emailStatus.message}</span>
               </div>
             )}
-            <p className="text-[10px] text-white/30 leading-relaxed">
+            <p className="text-[10px] text-ink-400 leading-relaxed">
               Los emails de contacto y recordatorios se envían vía Gmail SMTP. Si falla, verifica que SMTP_PASS en .env.local sea un App Password de 16 caracteres generado en&nbsp;
               <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-coral-400/60 hover:text-coral-400">Google App Passwords</a>.
             </p>
@@ -234,32 +234,32 @@ export function ConfiguracionView() {
           {user?.role === "owner" && <Button size="sm" onClick={() => setShowAddStaff(true)}><IconPlus width={14} height={14} /> Añadir</Button>}
         </CardHeader>
         {isDemo ? (
-          <p className="text-sm text-white/40">Inicia sesión como propietario para gestionar usuarios secundarios.</p>
+          <p className="text-sm text-ink-500">Inicia sesión como propietario para gestionar usuarios secundarios.</p>
         ) : user?.role === "staff" ? (
-          <p className="text-sm text-white/40">Solo el propietario puede gestionar usuarios secundarios.</p>
+          <p className="text-sm text-ink-500">Solo el propietario puede gestionar usuarios secundarios.</p>
         ) : (
           <>
-            {staffList.length === 0 && <p className="text-sm text-white/40">No hay usuarios secundarios. Añade educadores o personal.</p>}
+            {staffList.length === 0 && <p className="text-sm text-ink-500">No hay usuarios secundarios. Añade educadores o personal.</p>}
             <div className="space-y-2">
               {staffList.map(s => (
-                <div key={s.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div key={s.id} className="p-3 rounded-xl bg-gray-50 border border-gray-200/50">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-medium text-white">{s.name}</div>
-                      <div className="text-xs text-white/40">{s.email}</div>
+                      <div className="text-sm font-medium text-ink-900">{s.name}</div>
+                      <div className="text-xs text-ink-500">{s.email}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="info">Personal</Badge>
-                      <button onClick={() => setResetPassId(resetPassId === s.id ? null : s.id)} className="text-white/30 hover:text-white text-xs transition" title="Resetear contraseña">
+                      <button onClick={() => setResetPassId(resetPassId === s.id ? null : s.id)} className="text-ink-400 hover:text-ink-900 text-xs transition" title="Resetear contraseña">
                         <IconSettings width={14} height={14} />
                       </button>
-                      <button onClick={() => handleDeleteStaff(s.id, s.email)} className="text-white/30 hover:text-red-400 transition" title="Eliminar">
+                      <button onClick={() => handleDeleteStaff(s.id, s.email)} className="text-ink-400 hover:text-red-600 transition" title="Eliminar">
                         <IconTrash width={14} height={14} />
                       </button>
                     </div>
                   </div>
                   {resetPassId === s.id && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-white/[0.05]">
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200/50">
                       <input className="input flex-1" type="password" placeholder="Nueva contraseña" value={resetPassValue} onChange={e => setResetPassValue(e.target.value)} />
                       <Button variant="secondary" size="sm" onClick={() => handleResetStaffPassword(s.id)}>Guardar</Button>
                     </div>
@@ -290,16 +290,16 @@ export function ConfiguracionView() {
       <Card>
         <CardHeader><CardTitle>Datos y privacidad</CardTitle></CardHeader>
         <div className="space-y-3 text-sm">
-          <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-            <span className="text-white/50">Exportar mis datos</span>
+          <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
+            <span className="text-ink-500">Exportar mis datos</span>
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = "/exportar"; }}>Ir a exportar</Button>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-            <span className="text-white/50">Eliminar mi cuenta</span>
+          <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
+            <span className="text-ink-500">Eliminar mi cuenta</span>
             <Button variant="danger" size="sm" onClick={() => toast("Contacta con soporte para eliminar tu cuenta", "info")}>Solicitar baja</Button>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-            <span className="text-white/50">Política de privacidad</span>
+          <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
+            <span className="text-ink-500">Política de privacidad</span>
             <a href="/privacidad" className="text-coral-400 hover:text-coral-300 text-sm">Ver</a>
           </div>
         </div>

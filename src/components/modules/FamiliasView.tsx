@@ -9,26 +9,62 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconPlus, IconSearch, IconTrash, IconFile } from "@/components/ui/Icons";
+import { IconPlus, IconSearch, IconTrash, IconFile, IconCheck } from "@/components/ui/Icons";
 import Link from "next/link";
 import { SERVICIOS_CATALOGO } from "@/lib/data/catalogos";
-import type { Familia, Servicio } from "@/types";
+import type { Familia, Servicio, CargoPendiente } from "@/types";
 
 const SERVICIO_OTRO = { concepto: "__otro__", importe: 0, descripcion: "Otro concepto personalizado" };
 
 export function FamiliasView() {
-  const { familias, facturas, addFamilia, updateFamilia, removeFamilia } = useStore();
+  const { familias, facturas, cargosPendientes, addFamilia, updateFamilia, removeFamilia, addCargo, updateCargo, removeCargo } = useStore();
   const { toast } = useToast();
   const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", email: "", telefono: "", iban: "", alumnosStr: "", servicios: [] as Servicio[] });
+  const [showCargoModal, setShowCargoModal] = useState(false);
+  const [cargoFamiliaId, setCargoFamiliaId] = useState<string | null>(null);
+  const [cargoForm, setCargoForm] = useState({ alumnoNombre: "", concepto: "", importe: "", tipo: "cuota" as CargoPendiente["tipo"], fechaVencimiento: "", notas: "" });
 
   const filtradas = useMemo(() => {
     if (!busqueda) return familias;
     const q = busqueda.toLowerCase();
     return familias.filter(f => f.nombre.toLowerCase().includes(q) || f.email.toLowerCase().includes(q) || f.alumnos.some(a => a.toLowerCase().includes(q)));
   }, [familias, busqueda]);
+
+  const getCargosFamilia = (familiaId: string) => {
+    const cargos = cargosPendientes.filter(c => c.familiaId === familiaId);
+    const pendiente = cargos.filter(c => c.estado === "pendiente").reduce((s, c) => s + c.importe, 0);
+    const vencidos = cargos.filter(c => c.estado === "pendiente" && c.fechaVencimiento < new Date().toISOString().slice(0, 10));
+    return { cargos, totalPendiente: pendiente, vencidosCount: vencidos.length };
+  };
+
+  const handleAddCargo = () => {
+    if (!cargoFamiliaId || !cargoForm.alumnoNombre || !cargoForm.concepto || !cargoForm.importe) {
+      toast("Completa los campos obligatorios", "error"); return;
+    }
+    const familia = familias.find(f => f.id === cargoFamiliaId);
+    if (!familia) return;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const cargo: CargoPendiente = {
+      id: genId("cargo"),
+      familiaId: cargoFamiliaId,
+      alumnoId: "",
+      alumnoNombre: cargoForm.alumnoNombre,
+      concepto: cargoForm.concepto,
+      importe: parseFloat(cargoForm.importe),
+      fechaEmision: hoy,
+      fechaVencimiento: cargoForm.fechaVencimiento || hoy,
+      estado: "pendiente",
+      tipo: cargoForm.tipo,
+      notas: cargoForm.notas || undefined,
+    };
+    addCargo(cargo);
+    toast(`Cargo de ${eur(cargo.importe)} añadido a ${cargo.alumnoNombre}`);
+    setShowCargoModal(false);
+    setCargoForm({ alumnoNombre: "", concepto: "", importe: "", tipo: "cuota", fechaVencimiento: "", notas: "" });
+  };
 
   const getBillingStatus = (familiaId: string) => {
     const facturasFamilia = facturas.filter(f => f.familiaId === familiaId);
@@ -102,11 +138,16 @@ export function FamiliasView() {
                 <p className="text-xs text-ink-500">{f.email} · {f.telefono}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                {(() => { const bs = getBillingStatus(f.id); return (
+                {(() => { const bs = getBillingStatus(f.id); const cs = getCargosFamilia(f.id); return (
                   <>
                     <Badge variant="success">Cobrado: {eur(bs.pagado)}</Badge>
                     {bs.pendiente > 0 && <Badge variant="info">{eur(bs.pendiente)} pendiente</Badge>}
                     {bs.impagado > 0 && <Badge variant="danger">{eur(bs.impagado)} impagado</Badge>}
+                    {cs.totalPendiente > 0 && (
+                      <Badge variant={cs.vencidosCount > 0 ? "danger" : "warning"}>
+                        Cargos: {eur(cs.totalPendiente)}{cs.vencidosCount > 0 ? ` (${cs.vencidosCount} venc.)` : ""}
+                      </Badge>
+                    )}
                   </>
                 ); })()}
               </div>
@@ -126,11 +167,37 @@ export function FamiliasView() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              {(() => { const cs = getCargosFamilia(f.id); if (cs.cargos.length === 0) return null; return (
+                <div className="mb-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">Cargos pendientes por alumno</div>
+                  {cs.cargos.filter(c => c.estado === "pendiente").map(c => (
+                    <div key={c.id} className="flex items-center justify-between text-xs py-0.5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-ink-600">{c.alumnoNombre}</span>
+                        <span className="text-ink-400">· {c.concepto}</span>
+                        {c.fechaVencimiento < new Date().toISOString().slice(0, 10) && (
+                          <span className="text-[9px] text-red-500 font-semibold">VENCIDO</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-ink-900 font-medium">{eur(c.importe)}</span>
+                        <button onClick={(e) => { e.stopPropagation(); updateCargo(c.id, { estado: "pagado" }); toast(`Cargo "${c.concepto}" marcado como pagado`); }}
+                          className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium">Pagar</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ); })()}
+            </div>
+            <div className="flex justify-between items-center">
               <div className="flex gap-2">
                 <Link href="/facturacion" className="text-xs text-coral-500 hover:text-coral-600 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <IconFile width={12} height={12} /> Ver facturación
                 </Link>
+                <button onClick={(e) => { e.stopPropagation(); setCargoFamiliaId(f.id); setCargoForm(p => ({ ...p, alumnoNombre: f.alumnos[0] || "" })); setShowCargoModal(true); }} className="text-xs text-coral-500 hover:text-coral-600 flex items-center gap-1">
+                  <IconPlus width={12} height={12} /> Añadir cargo
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); removeFamilia(f.id); toast(`Familia ${f.nombre} eliminada`, "info"); }} className="text-xs text-ink-400 hover:text-red-400 flex items-center gap-1">
                   <IconTrash width={12} height={12} />
                 </button>
@@ -194,6 +261,55 @@ export function FamiliasView() {
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>
             <Button size="sm" onClick={handleSubmit}>{editId ? "Guardar cambios" : "Añadir familia"}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showCargoModal} onClose={() => setShowCargoModal(false)} title="Añadir cargo pendiente">
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink-700">Alumno <span className="text-coral-400">*</span></label>
+            <select className="select w-full" value={cargoForm.alumnoNombre} onChange={e => setCargoForm(p => ({ ...p, alumnoNombre: e.target.value }))}>
+              <option value="">Seleccionar alumno...</option>
+              {cargoFamiliaId && familias.find(f => f.id === cargoFamiliaId)?.alumnos.map((a, i) => (
+                <option key={i} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink-700">Concepto <span className="text-coral-400">*</span></label>
+            <input className="input w-full" placeholder="Ej: Material didáctico, Pañales..." value={cargoForm.concepto} onChange={e => setCargoForm(p => ({ ...p, concepto: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Importe (€) <span className="text-coral-400">*</span></label>
+              <input className="input w-full" placeholder="0.00" type="number" step="0.01" value={cargoForm.importe} onChange={e => setCargoForm(p => ({ ...p, importe: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Tipo</label>
+              <select className="select w-full" value={cargoForm.tipo} onChange={e => setCargoForm(p => ({ ...p, tipo: e.target.value as CargoPendiente["tipo"] }))}>
+                <option value="cuota">Cuota</option>
+                <option value="material">Material</option>
+                <option value="extraescolar">Extraescolar</option>
+                <option value="comedor">Comedor</option>
+                <option value="matricula">Matrícula</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Fecha de vencimiento</label>
+              <input className="input w-full" type="date" value={cargoForm.fechaVencimiento} onChange={e => setCargoForm(p => ({ ...p, fechaVencimiento: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-700">Notas (opcional)</label>
+              <input className="input w-full" placeholder="Ej: Pagado en efectivo..." value={cargoForm.notas} onChange={e => setCargoForm(p => ({ ...p, notas: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" size="sm" onClick={() => setShowCargoModal(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleAddCargo}>Añadir cargo</Button>
           </div>
         </div>
       </Modal>

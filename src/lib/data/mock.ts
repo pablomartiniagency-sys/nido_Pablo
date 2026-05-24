@@ -1,4 +1,4 @@
-import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia } from "@/types";
+import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CargoPendiente } from "@/types";
 
 export const FAMILIAS: Familia[] = [
   { id:"fam-1", nombre:"Familia García López", email:"ana.garcia@email.com", telefono:"612345678", iban:"ES9121000418450200051332", alumnos:["Martina García (3a)", "Leo García (1a)"], servicios:[{ concepto:"Matrícula curso 25/26", importe:150 }, { concepto:"Mensualidad completa", importe:420 }, { concepto:"Comedor", importe:85 }] },
@@ -107,4 +107,16 @@ export const INCIDENCIAS: Incidencia[] = [
   { id:"inc-5", alumno:"Daniel González", tipo:"caida", descripcion:"Tropiezo en escalón, pequeña contusión frente", gravedad:"moderada", notificada:true, resuelta:false, fecha:"2026-06-15" },
   { id:"inc-6", alumno:"Irene Torres", tipo:"otro", descripcion:"Dolor de tripa sin fiebre, vigilancia en aula", gravedad:"leve", notificada:true, resuelta:true, fecha:"2026-06-16" },
   { id:"inc-7", alumno:"Sergio Navarro", tipo:"alergia", descripcion:"Sospecha alergia al kiwi (ofrecido en merienda)", gravedad:"leve", notificada:false, resuelta:false, fecha:"2026-06-18" },
+];
+
+export const CARGOS_PENDIENTES: CargoPendiente[] = [
+  { id:"cargo-1", familiaId:"fam-3", alumnoId:"alu-3", alumnoNombre:"Pablo Sánchez", concepto:"Pañales e higiene Junio", importe:25, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"material" },
+  { id:"cargo-2", familiaId:"fam-3", alumnoId:"alu-4", alumnoNombre:"Carmen Sánchez", concepto:"Pañales e higiene Junio", importe:25, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"material" },
+  { id:"cargo-3", familiaId:"fam-3", alumnoId:"alu-5", alumnoNombre:"Alma Sánchez", concepto:"Pañales e higiene Junio", importe:25, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"material" },
+  { id:"cargo-4", familiaId:"fam-1", alumnoId:"alu-1", alumnoNombre:"Martina García", concepto:"Extraescolar inglés Junio", importe:35, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"extraescolar" },
+  { id:"cargo-5", familiaId:"fam-1", alumnoId:"alu-2", alumnoNombre:"Leo García", concepto:"Extraescolar psicomotricidad Junio", importe:30, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"extraescolar" },
+  { id:"cargo-6", familiaId:"fam-6", alumnoId:"alu-7", alumnoNombre:"Daniel González", concepto:"Material didáctico Junio", importe:20, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"material" },
+  { id:"cargo-7", familiaId:"fam-6", alumnoId:"alu-8", alumnoNombre:"Clara González", concepto:"Material didáctico Junio", importe:20, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pendiente", tipo:"material" },
+  { id:"cargo-8", familiaId:"fam-2", alumnoId:"alu-2", alumnoNombre:"Sofía Martínez", concepto:"Ampliación horaria tarde Junio", importe:40, fechaEmision:"2026-06-01", fechaVencimiento:"2026-07-05", estado:"pendiente", tipo:"cuota" },
+  { id:"cargo-9", familiaId:"fam-4", alumnoId:"alu-6", alumnoNombre:"Hugo Díaz", concepto:"Material didáctico Junio", importe:20, fechaEmision:"2026-06-01", fechaVencimiento:"2026-06-30", estado:"pagado", tipo:"material", notas:"Pagado en efectivo 15/06" },
 ];

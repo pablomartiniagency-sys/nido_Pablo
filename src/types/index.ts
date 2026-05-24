@@ -22,7 +22,7 @@ export type Recurrencia = "puntual" | "mensual" | "trimestral" | "anual";
 export type Gasto = {
   id: string; fecha: string; proveedor: string; concepto: string;
   importe: number; iva: number; categoria: CategoriaGasto;
-  recurrencia: Recurrencia; notas?: string; ocr?: boolean; archivoOriginal?: string;
+  recurrencia: Recurrencia;   notas?: string; ocr?: boolean; archivoOriginal?: string; ocrRef?: { proveedor: string; fecha: string; importe: number; iva: number; categoria: string; textoExtraido: string; fechaOCR: string; };
 };
 
 export type Empleado = {
@@ -62,4 +62,20 @@ export type Tarea = {
   completada: boolean;
   creadaPor: "ia" | "manual";
   createdAt: string;
+};
+
+export type EstadoCargo = "pendiente" | "pagado" | "anulado";
+
+export type CargoPendiente = {
+  id: string;
+  familiaId: string;
+  alumnoId: string;
+  alumnoNombre: string;
+  concepto: string;
+  importe: number;
+  fechaEmision: string;
+  fechaVencimiento: string;
+  estado: EstadoCargo;
+  tipo: "cuota" | "material" | "extraescolar" | "comedor" | "matricula" | "otro";
+  notas?: string;
 };

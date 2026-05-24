@@ -1,4 +1,4 @@
-import type { Gasto, Factura, SuministroFactura } from "@/types";
+import type { Gasto, Factura, SuministroFactura, CargoPendiente } from "@/types";
 
 export async function ocrFactura() {
   await sleep(1600 + Math.random() * 800);
@@ -89,7 +89,7 @@ export async function responderAsistente(pregunta: string, ctx: {
   return `He registrado tu consulta. Con la API de Anthropic activa redactaré circulares y analizaré PDFs.`;
 }
 
-export function detectarAlertas(input: { facturas: Factura[]; gastos: Gasto[]; suministros: SuministroFactura[] }) {
+export function detectarAlertas(input: { facturas: Factura[]; gastos: Gasto[]; suministros: SuministroFactura[]; cargosPendientes?: CargoPendiente[] }) {
   const out: Array<{tipo:"critica"|"aviso"|"info"; titulo:string; detalle:string; accion?:string}> = [];
   const impagos = input.facturas.filter(f=>f.estado==="impago");
   if (impagos.length) out.push({
@@ -97,6 +97,14 @@ export function detectarAlertas(input: { facturas: Factura[]; gastos: Gasto[]; s
     titulo: `${impagos.length} ${impagos.length===1?"familia":"familias"} en impago`,
     detalle: `Impacto: ${impagos.reduce((s,f)=>s+f.total,0)}€ pendientes.`,
     accion: "Enviar recordatorios",
+  });
+
+  const cargosVencidos = (input.cargosPendientes || []).filter(c => c.estado === "pendiente" && new Date(c.fechaVencimiento) < new Date());
+  if (cargosVencidos.length > 0) out.push({
+    tipo: cargosVencidos.length > 3 ? "critica" : "aviso",
+    titulo: `${cargosVencidos.length} cargo${cargosVencidos.length === 1 ? "" : "s"} vencido${cargosVencidos.length === 1 ? "" : "s"}`,
+    detalle: `${cargosVencidos.reduce((s, c) => s + c.importe, 0)}€ en cargos por alumno pendientes de cobro.`,
+    accion: "Revisar cargos",
   });
   const anomalo = input.gastos.find(g=>g.importe>800 && g.recurrencia==="puntual");
   if (anomalo) out.push({ tipo:"aviso", titulo:`Gasto puntual elevado: ${anomalo.proveedor}`,

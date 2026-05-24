@@ -171,7 +171,7 @@ export default function ImportarView() {
           {Object.entries(PLANTILLAS).map(([key, p]) => (
             <Card key={key} className="p-5">
               <CardTitle className="mb-2 text-sm">{p.label}</CardTitle>
-              <div className="text-[10px] text-white/40 mb-3 font-mono">{p.columnas.join(", ")}</div>
+              <div className="text-[10px] text-ink-400 mb-3 font-mono">{p.columnas.join(", ")}</div>
               <Button variant="ghost" size="sm" onClick={() => descargarPlantilla(key as EntidadImportable)}>
                 <IconDownload width={12} height={12} /> Plantilla CSV
               </Button>
@@ -192,17 +192,17 @@ export default function ImportarView() {
         {mapeo ? (
           <div className="text-center">
             <IconCheck width={40} height={40} className="mx-auto text-emerald-400 mb-3" />
-            <p className="text-sm font-medium text-white">{mapeo.data.length} registros detectados</p>
-            <p className="text-xs text-white/40 mt-1">{PLANTILLAS[mapeo.entidad].label}</p>
+            <p className="text-sm font-medium text-emerald-900">{mapeo.data.length} registros detectados</p>
+            <p className="text-xs text-emerald-700 mt-1">{PLANTILLAS[mapeo.entidad].label}</p>
             {mapeo.errores.length > 0 && (
               <div className="mt-3 text-xs text-red-400">{mapeo.errores.length} errores de validación</div>
             )}
           </div>
         ) : (
           <>
-            <IconUpload width={40} height={40} className="text-white/30 mb-3" />
-            <p className="text-sm font-medium text-white/70">Arrastra tu archivo CSV aquí</p>
-            <p className="text-xs text-white/40 mt-1">o haz clic para seleccionar</p>
+            <IconUpload width={40} height={40} className="text-ink-300 mb-3" />
+            <p className="text-sm font-medium text-ink-500">Arrastra tu archivo CSV aquí</p>
+            <p className="text-xs text-ink-400 mt-1">o haz clic para seleccionar</p>
           </>
         )}
         <input ref={fileInputRef} type="file" accept=".csv,.tsv" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
@@ -224,13 +224,13 @@ export default function ImportarView() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {mapeo.columnas.map(c => <th key={c} className="text-left py-2 px-3 text-white/40 font-medium text-xs uppercase">{c}</th>)}
+                  {mapeo.columnas.map(c => <th key={c} className="text-left py-2 px-3 text-ink-500 font-medium text-xs uppercase">{c}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {mapeo.data.slice(0, 5).map((row, i) => (
-                  <tr key={i} className="border-b border-white/[0.03]">
-                    {mapeo.columnas.map(c => <td key={c} className="py-2 px-3 text-white/70 text-xs truncate max-w-[150px]">{String(row[c] || "")}</td>)}
+                  <tr key={i} className="border-b border-gray-200/60">
+                    {mapeo.columnas.map(c => <td key={c} className="py-2 px-3 text-ink-600 text-xs truncate max-w-[150px]">{String(row[c] || "")}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -242,8 +242,8 @@ export default function ImportarView() {
       {importado && (
         <Card className="p-8 text-center border-emerald-500/20 bg-emerald-500/5">
           <IconCheck width={48} height={48} className="mx-auto text-emerald-400 mb-3" />
-          <h3 className="text-lg font-bold text-white mb-1">Importación completada</h3>
-          <p className="text-sm text-white/50">Los datos ya están disponibles en la aplicación.</p>
+          <h3 className="text-lg font-bold text-emerald-900 mb-1">Importación completada</h3>
+          <p className="text-sm text-emerald-700">Los datos ya están disponibles en la aplicación.</p>
           <Button variant="ghost" size="sm" className="mt-4" onClick={() => { setMapeo(null); setImportado(false); }}>Importar otro archivo</Button>
         </Card>
       )}

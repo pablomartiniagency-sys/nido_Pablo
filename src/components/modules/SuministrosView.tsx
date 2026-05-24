@@ -55,7 +55,7 @@ export function SuministrosView() {
         {TIPOS.map(t => (
           <button key={t} onClick={() => setTipoActivo(t)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition capitalize ${
-              tipoActivo === t ? "bg-coral-500/20 text-coral-300 border border-coral-500/30" : "text-white/50 hover:text-white border border-transparent"
+              tipoActivo === t ? "bg-coral-500/20 text-coral-300 border border-coral-500/30" : "text-ink-500 hover:text-ink-900 border border-transparent"
             }`}>
             {t}
           </button>
@@ -65,14 +65,14 @@ export function SuministrosView() {
       <div className="grid md:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="label mb-1">Último consumo</div>
-          <div className="text-xl font-bold text-white">
+          <div className="text-xl font-bold text-ink-900">
             {filtrados.at(-1)?.consumo ?? "—"} {filtrados.at(-1)?.unidad ?? ""}
           </div>
-          <div className="text-xs text-white/30 mt-1">{filtrados.at(-1)?.periodo ?? ""}</div>
+          <div className="text-xs text-ink-400 mt-1">{filtrados.at(-1)?.periodo ?? ""}</div>
         </Card>
         <Card className="p-4">
           <div className="label mb-1">Previsión próximo mes</div>
-          <div className="text-xl font-bold text-white">
+          <div className="text-xl font-bold text-ink-900">
             {prediccion.proximoMes > 0 ? eur(prediccion.proximoMes) : "—"}
           </div>
         </Card>
@@ -81,7 +81,7 @@ export function SuministrosView() {
           <Badge variant={prediccion.tendencia === "sube" ? "danger" : prediccion.tendencia === "baja" ? "success" : "info"}>
             {prediccion.tendencia === "sube" ? "Sube" : prediccion.tendencia === "baja" ? "Baja" : "Estable"}
           </Badge>
-          <div className="text-xs text-white/30 mt-2">{prediccion.recomendacion}</div>
+          <div className="text-xs text-ink-400 mt-2">{prediccion.recomendacion}</div>
         </Card>
       </div>
 
@@ -93,10 +93,10 @@ export function SuministrosView() {
             const h = (s.importe / max) * 100;
             return (
               <div key={s.id} className="flex-1 flex flex-col items-center gap-1">
-                <div className="text-[10px] text-white/40 font-medium">{eur(s.importe)}</div>
+                <div className="text-[10px] text-ink-600 font-medium">{eur(s.importe)}</div>
                 <div className="w-full rounded-t-lg bg-gradient-to-t from-coral-500/40 to-coral-400/20 transition-all duration-300"
                   style={{ height: `${Math.max(h, 5)}%`, minHeight: "8px" }} />
-                <div className="text-[9px] text-white/30 text-center">{s.periodo}</div>
+                <div className="text-[9px] text-ink-400 text-center">{s.periodo}</div>
               </div>
             );
           })}
@@ -108,20 +108,20 @@ export function SuministrosView() {
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Periodo</th>
-                <th className="text-left py-3 px-3 text-white/40 font-medium text-xs uppercase">Proveedor</th>
-                <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Consumo</th>
-                <th className="text-right py-3 px-3 text-white/40 font-medium text-xs uppercase">Importe</th>
+              <tr className="border-b border-gray-200/60">
+                <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Periodo</th>
+                <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Proveedor</th>
+                <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Consumo</th>
+                <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Importe</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()).map(s => (
-                <tr key={s.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3 px-3 text-white">{s.periodo}</td>
-                  <td className="py-3 px-3 text-white/70">{s.proveedor}</td>
-                  <td className="py-3 px-3 text-right text-white/60">{s.consumo} {s.unidad}</td>
-                  <td className="py-3 px-3 text-right font-medium text-white">{eur(s.importe)}</td>
+                <tr key={s.id} className="border-b border-gray-200/60 hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-3 text-ink-900">{s.periodo}</td>
+                  <td className="py-3 px-3 text-ink-600">{s.proveedor}</td>
+                  <td className="py-3 px-3 text-right text-ink-500">{s.consumo} {s.unidad}</td>
+                  <td className="py-3 px-3 text-right font-medium text-ink-900">{eur(s.importe)}</td>
                 </tr>
               ))}
             </tbody>

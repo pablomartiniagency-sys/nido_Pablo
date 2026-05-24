@@ -17,12 +17,12 @@ export function KPI({ label, value, subtitle, icon, trend, className }: KPIProps
         <div className="label">{label}</div>
         {icon && <div className="text-coral-400/60">{icon}</div>}
       </div>
-      <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
+      <div className="text-2xl font-bold text-ink-900 tracking-tight">{value}</div>
       {subtitle && (
         <div className="flex items-center gap-1.5 mt-1">
           {trend === "up" && <span className="text-emerald-400 text-xs">↑</span>}
           {trend === "down" && <span className="text-red-400 text-xs">↓</span>}
-          <span className="text-xs text-white/45">{subtitle}</span>
+          <span className="text-xs text-ink-400">{subtitle}</span>
         </div>
       )}
     </div>

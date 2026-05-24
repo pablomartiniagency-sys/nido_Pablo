@@ -176,7 +176,7 @@ export function FacturacionView() {
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-gray-200/60">
                   <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Familia</th>
                   <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Servicios contratados</th>
                   <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Facturado</th>
@@ -188,7 +188,7 @@ export function FacturacionView() {
               </thead>
               <tbody>
                 {resumenFamilias.filter(f => !busqueda || f.nombre.toLowerCase().includes(busqueda.toLowerCase())).map(f => (
-                  <tr key={f.id} className="border-b border-white/[0.03] hover:bg-gray-50 transition-colors">
+                  <tr key={f.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-3">
                       <div className="text-ink-900 font-medium">{f.nombre}</div>
                       <div className="text-xs text-ink-500">{f.alumnos.length} alumno{f.alumnos.length !== 1 ? "s" : ""} · {f.facturasCount} factura{f.facturasCount !== 1 ? "s" : ""}</div>
@@ -257,19 +257,19 @@ export function FacturacionView() {
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Factura</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Familia</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Periodo</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Servicios</th>
-                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Total</th>
-                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Estado</th>
-                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtradas.map(f => (
-                    <tr key={f.id} className="border-b border-white/[0.03] hover:bg-gray-50 transition-colors">
+                <tr className="border-b border-gray-200/60">
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Factura</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Familia</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Periodo</th>
+                  <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Servicios</th>
+                  <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Total</th>
+                  <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Estado</th>
+                  <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtradas.map(f => (
+                  <tr key={f.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-3 text-ink-900 font-medium">{f.numero}</td>
                       <td className="py-3 px-3 text-ink-700">{f.familia}</td>
                       <td className="py-3 px-3 text-ink-500">{f.periodo}</td>
@@ -360,7 +360,7 @@ export function FacturacionView() {
               </div>
             ))}
             {form.items.length > 0 && (
-              <div className="flex justify-end pt-2 border-t border-white/[0.04]">
+              <div className="flex justify-end pt-2 border-t border-gray-200/40">
                 <span className="text-sm font-medium text-ink-900">
                   Total: {eur(form.items.reduce((s, item) => s + (parseFloat(item.importe) || 0), 0))}
                 </span>
