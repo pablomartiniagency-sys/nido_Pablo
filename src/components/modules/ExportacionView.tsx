@@ -50,7 +50,7 @@ export default function ExportacionView() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-coral-500/20 flex items-center justify-center group-hover:bg-coral-500/30 transition-colors">
-                  <IconDownload className="text-coral-400" />
+                  <IconDownload width={20} height={20} className="text-coral-400" />
                 </div>
                 <span className="text-xs text-charcoal-500">{item.count} registros</span>
               </div>

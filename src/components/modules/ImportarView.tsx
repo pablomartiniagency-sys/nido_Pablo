@@ -173,7 +173,7 @@ export default function ImportarView() {
               <CardTitle className="mb-2 text-sm">{p.label}</CardTitle>
               <div className="text-[10px] text-ink-400 mb-3 font-mono">{p.columnas.join(", ")}</div>
               <Button variant="ghost" size="sm" onClick={() => descargarPlantilla(key as EntidadImportable)}>
-                <IconDownload width={12} height={12} /> Plantilla CSV
+                  <IconDownload width={16} height={16} /> Plantilla CSV
               </Button>
             </Card>
           ))}
