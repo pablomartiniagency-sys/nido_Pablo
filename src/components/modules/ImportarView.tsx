@@ -200,7 +200,7 @@ export default function ImportarView() {
           </div>
         ) : (
           <>
-            <IconUpload width={40} height={40} className="text-ink-300 mb-3" />
+            <IconUpload width={24} height={24} className="text-ink-300 mb-3" />
             <p className="text-sm font-medium text-ink-500">Arrastra tu archivo CSV aquí</p>
             <p className="text-xs text-ink-400 mt-1">o haz clic para seleccionar</p>
           </>

@@ -64,7 +64,7 @@ export function DashboardView() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KPI label="Empleados" value={String(empleadosActivos)} subtitle={`Coste ${eur(nominaTotal)}/mes`} trend={empleadosActivos > 0 ? "up" : "neutral"} />
-        <KPI label="Gasto del mes" value={eur(gastoMes)} subtitle="junio 2026" trend="neutral" />
+        <KPI label="Gasto del mes" value={eur(gastoMes)} subtitle={(() => { const m = new Date(); return ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m.getMonth()] + " " + m.getFullYear(); })()} trend="neutral" />
         <KPI label="Morosos" value={String(morosos)} trend="down" subtitle={morosos === 1 ? "1 familia" : `${morosos} familias`} />
         <KPI label="Cargos pendientes" value={eur(cargosPendientesTotal)} icon={<IconBell width={16} height={16} />} trend={cargosVencidosCount > 0 ? "down" : "neutral"} subtitle={`${cargosVencidosCount} vencidos`} />
       </div>

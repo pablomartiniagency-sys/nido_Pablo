@@ -259,6 +259,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const removeCargo = useCallback((id: string) => setData(p => ({ ...p, cargosPendientes: p.cargosPendientes.filter(c => c.id !== id) })), []);
 
   const dashboardMetrics = useMemo(() => {
+    const now = new Date();
+    const mesPrefijo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const mesesES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const mesActualTexto = `${mesesES[now.getMonth()]} ${now.getFullYear()}`;
+    const mesAnteriorTexto = now.getMonth() === 0
+      ? `Diciembre ${now.getFullYear() - 1}`
+      : `${mesesES[now.getMonth() - 1]} ${now.getFullYear()}`;
     const cargosPendientesTotal = data.cargosPendientes.filter(c => c.estado === "pendiente").reduce((s, c) => s + c.importe, 0);
     const cargosVencidos = data.cargosPendientes.filter(c => c.estado === "pendiente" && c.fechaVencimiento < new Date().toISOString().slice(0, 10));
     return {
@@ -266,11 +273,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       totalAlumnos: data.alumnos.length,
       cobrado: data.facturas.filter(f => f.estado === "pagada").reduce((s, f) => s + f.total, 0),
       pendiente: data.facturas.filter(f => f.estado === "impago" || f.estado === "enviada").reduce((s, f) => s + f.total, 0),
-      gastoMes: data.gastos.filter(g => g.fecha.startsWith("2026-06")).reduce((s, g) => s + g.importe, 0),
-      resultado: data.facturas.filter(f => f.estado === "pagada").reduce((s, f) => s + f.total, 0) - data.gastos.filter(g => g.fecha.startsWith("2026-06")).reduce((s, g) => s + g.importe, 0),
+      gastoMes: data.gastos.filter(g => g.fecha.startsWith(mesPrefijo)).reduce((s, g) => s + g.importe, 0),
+      resultado: data.facturas.filter(f => f.estado === "pagada").reduce((s, f) => s + f.total, 0) - data.gastos.filter(g => g.fecha.startsWith(mesPrefijo)).reduce((s, g) => s + g.importe, 0),
       morosos: data.facturas.filter(f => f.estado === "impago").length,
       empleadosActivos: data.empleados.filter(e => e.activo).length,
-      nominaTotal: data.nominas.filter(n => n.periodo === "Mayo 2026").reduce((s, n) => s + n.bruto, 0),
+      nominaTotal: data.nominas.filter(n => n.periodo === mesAnteriorTexto).reduce((s, n) => s + n.bruto, 0),
       cargosPendientesTotal,
       cargosVencidosCount: cargosVencidos.length,
     };
