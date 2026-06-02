@@ -230,6 +230,30 @@ export default function AlumnosView() {
         </button>
       </div>
 
+      {alumnos.length === 0 && (
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-coral-50 to-amber-50 border border-coral-200">
+          <h3 className="text-lg font-bold text-ink-900 mb-2">¡Bienvenido! Configura tu primer alumno</h3>
+          <p className="text-sm text-ink-600 mb-4">Sigue estos pasos para añadir tu primer alumno al sistema. Podrás añadir más después.</p>
+          <div className="grid md:grid-cols-3 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-white border border-gray-200">
+              <div className="text-xs font-bold text-coral-500 mb-1">1. Datos básicos</div>
+              <div className="text-[10px] text-ink-500">Nombre, fecha nacimiento, curso</div>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-gray-200">
+              <div className="text-xs font-bold text-coral-500 mb-1">2. Familia</div>
+              <div className="text-[10px] text-ink-500">Asigna a una familia existente</div>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-gray-200">
+              <div className="text-xs font-bold text-coral-500 mb-1">3. Información médica</div>
+              <div className="text-[10px] text-ink-500">Alergias, vacunas, contactos</div>
+            </div>
+          </div>
+          <button onClick={handleNuevoAlumno} className="px-4 py-2 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors text-sm font-medium">
+            + Añadir primer alumno
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text" placeholder="Buscar alumno..."

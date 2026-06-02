@@ -174,22 +174,26 @@ export function ConfiguracionView() {
                 <span className="text-ink-700 font-mono text-xs">{process.env.NEXT_PUBLIC_SMTP_HOST || "smtp.gmail.com"}</span>
               </div>
             </div>
-            <Button variant="secondary" size="sm" onClick={handleTestEmail} disabled={emailTesting}>
-              <IconRefresh width={14} height={14} className={emailTesting ? "animate-spin" : ""} />
-              {emailTesting ? "Probando..." : "Probar conexión SMTP"}
-            </Button>
-            {emailStatus && (
-              <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
-                emailStatus.ok ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border border-red-500/20 text-red-300"
-              }`}>
-                {emailStatus.ok ? <IconCheck width={14} height={14} className="mt-0.5 shrink-0" /> : <IconX width={14} height={14} className="mt-0.5 shrink-0" />}
-                <span>{emailStatus.message}</span>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={handleTestEmail} disabled={emailTesting}>
+                <IconRefresh width={14} height={14} className={emailTesting ? "animate-spin" : ""} />
+                {emailTesting ? "Probando..." : "Probar conexión SMTP"}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={async () => {
+                try {
+                  const res = await fetch("/api/email-test");
+                  const data = await res.json();
+                  toast(data.success ? "Email demo enviado — revisa tu bandeja" : "Error: " + data.message, data.success ? "success" : "error");
+                } catch { toast("Error de conexión", "error"); }
+              }}>
+                <span className="text-xs">📧</span> Enviar email demo
+              </Button>
+            </div>
             <p className="text-[10px] text-ink-400 leading-relaxed">
               Los emails de contacto y recordatorios se envían vía Gmail SMTP. Si falla, verifica que SMTP_PASS en .env.local sea un App Password de 16 caracteres generado en&nbsp;
-              <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-coral-400/60 hover:text-coral-400">Google App Passwords</a>.
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-coral-500 hover:text-coral-600">Google App Passwords</a>.
             </p>
+            <p className="text-[10px] text-ink-400">Cada cuenta secundaria puede tener su propia configuración SMTP en futuras versiones.</p>
           </div>
         </Card>
       </div>
@@ -267,9 +271,10 @@ export function ConfiguracionView() {
                 </div>
               ))}
             </div>
-          </>
-        )}
-      </Card>
+            </>
+          )}
+          <p className="text-[10px] text-ink-400 mt-3">Cada cuenta secundaria opera con su propia base de datos independiente (localStorage). Los datos no se comparten entre cuentas.</p>
+        </Card>
 
       {showAddStaff && (
         <Card>

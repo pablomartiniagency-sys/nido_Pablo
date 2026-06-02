@@ -85,12 +85,19 @@ export const COMUNIDADES_AUTONOMAS = [
   "La Rioja", "Madrid", "Murcia", "Navarra", "País Vasco", "Valencia",
 ] as const;
 
+export type ServicioCatalogo = {
+  concepto: string;
+  importe: number;
+  descripcion: string;
+};
+
 export type EscuelaConfig = {
   nombre: string;
   nif: string;
   direccion: string;
   comunidadAutonoma: string;
   telefono: string;
+  serviciosCatalogo?: ServicioCatalogo[];
 };
 
 // ====== Comercial CRM / Leads ======

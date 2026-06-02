@@ -295,7 +295,7 @@ export function ContabilidadView() {
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px]">
               <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input className="input pl-9" placeholder="Buscar proveedor o concepto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              <input className="input pl-10" placeholder="Buscar proveedor o concepto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
             </div>
             <select className="select w-auto" value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value as CategoriaGasto | "todas")}>
               <option value="todas">Todas las categorías</option>
@@ -420,12 +420,12 @@ export function ContabilidadView() {
       {tab === "asientos" && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle>Asientos contables ({asientos.length})</CardTitle>
               <Button size="sm" onClick={() => setShowAsientoModal(true)}><IconPlus width={14} height={14} /> Añadir asiento manual</Button>
             </div>
+            <p className="mt-2 text-xs text-ink-400">Los asientos generados automáticamente de facturas y gastos. Puedes añadir asientos manuales para ajustes, amortizaciones, capital inicial, préstamos, etc.</p>
           </CardHeader>
-          <p className="px-5 pb-3 text-xs text-ink-400">Los asientos en verde son generados automáticamente de facturas y gastos. Puedes añadir asientos manuales para ajustes, amortizaciones, capital inicial, préstamos, etc.</p>
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm">
               <thead>

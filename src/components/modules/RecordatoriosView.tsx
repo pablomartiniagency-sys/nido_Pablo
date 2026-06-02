@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useStore } from "@/lib/data/useStore";
-import { IconSend, IconAlert, IconCheck, IconRefresh } from "@/components/ui/Icons";
+import { IconSend, IconAlert, IconCheck, IconRefresh, IconSparkles } from "@/components/ui/Icons";
 import { eur } from "@/lib/format";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import type { CargoPendiente } from "@/types";
 
 interface HistorialRecordatorio {
@@ -18,9 +21,15 @@ interface HistorialRecordatorio {
 
 export default function RecordatoriosView() {
   const { facturas, familias, cargosPendientes } = useStore();
+  const { toast } = useToast();
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ ok: boolean; msg: string } | null>(null);
   const [historial, setHistorial] = useState<HistorialRecordatorio[]>([]);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftFamiliaId, setDraftFamiliaId] = useState<string | null>(null);
+  const [draftTipo, setDraftTipo] = useState<"cortesia" | "impago">("cortesia");
+  const [draftEdited, setDraftEdited] = useState({ asunto: "", cuerpo: "" });
 
   const familiasMorosas = useMemo(() => {
     const grouped = new Map<string, {
@@ -121,6 +130,85 @@ export default function RecordatoriosView() {
     }
   };
 
+  const generarBorrador = async (familiaId: string, tipo: "cortesia" | "impago") => {
+    const grupo = familiasMorosas.find(f => f.familia.id === familiaId);
+    if (!grupo) return;
+
+    setDraftLoading(true);
+    setDraftFamiliaId(familiaId);
+    setDraftTipo(tipo);
+    setShowDraftModal(true);
+    setDraftEdited({ asunto: "", cuerpo: "" });
+
+    try {
+      const res = await fetch("/api/recordatorios/borrador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          familiaNombre: grupo.familia.nombre,
+          familiaEmail: grupo.familia.email,
+          facturas: grupo.facturas.map(f => ({
+            numero: f.numero,
+            periodo: f.periodo,
+            total: f.total,
+          })),
+          cargos: grupo.cargos.map(c => ({
+            concepto: c.concepto,
+            alumnoNombre: c.alumnoNombre,
+            importe: c.importe,
+          })),
+          tipo,
+        }),
+      });
+      const data = await res.json();
+      if (data.draft) {
+        setDraftEdited(data.draft);
+      } else {
+        toast("No se pudo generar el borrador", "error");
+      }
+    } catch {
+      toast("Error al generar borrador", "error");
+    } finally {
+      setDraftLoading(false);
+    }
+  };
+
+  const enviarBorrador = async () => {
+    if (!draftFamiliaId || !draftEdited.asunto) return;
+    const grupo = familiasMorosas.find(f => f.familia.id === draftFamiliaId);
+    if (!grupo) return;
+
+    setSendingId(draftFamiliaId);
+    try {
+      const res = await fetch("/api/recordatorios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          familiaNombre: grupo.familia.nombre,
+          familiaEmail: grupo.familia.email,
+          facturas: grupo.facturas.map(f => ({ numero: f.numero, periodo: f.periodo, total: f.total })),
+          cargos: grupo.cargos.map(c => ({ concepto: c.concepto, alumnoNombre: c.alumnoNombre, importe: c.importe, fechaVencimiento: c.fechaVencimiento })),
+          tipo: draftTipo,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast("Recordatorio enviado");
+        setHistorial(prev => [{
+          id: `rec-${Date.now()}`, familiaId: grupo.familia.id, familiaNombre: grupo.familia.nombre,
+          fecha: new Date().toLocaleString("es-ES"), tipo: draftTipo, total: grupo.total, enviado: true,
+        }, ...prev]);
+        setShowDraftModal(false);
+      } else {
+        toast(data.error || "Error al enviar", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSendingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -161,7 +249,7 @@ export default function RecordatoriosView() {
 
               <div className="space-y-2 mb-4">
                 {grupo.facturas.map(f => (
-                  <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
+                  <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-100">
                     <div className="flex items-center gap-3">
                       <span className={`w-2 h-2 rounded-full ${f.estado === "impago" ? "bg-red-500" : "bg-amber-500"}`} />
                       <div>
@@ -176,7 +264,7 @@ export default function RecordatoriosView() {
                   </div>
                 ))}
                 {grupo.cargos.map(c => (
-                  <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50/50">
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50/50 border border-amber-100">
                     <div className="flex items-center gap-3">
                       <span className={`w-2 h-2 rounded-full ${c.fechaVencimiento < new Date().toISOString().slice(0, 10) ? "bg-red-500" : "bg-amber-500"}`} />
                       <div>
@@ -194,7 +282,15 @@ export default function RecordatoriosView() {
                 ))}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => generarBorrador(grupo.familia.id, "cortesia")}
+                  disabled={draftLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors text-sm disabled:opacity-50"
+                >
+                  <IconSparkles width={14} height={14} />
+                  Borrador IA
+                </button>
                 <button
                   onClick={() => enviarRecordatorio(grupo.familia.id, "cortesia")}
                   disabled={sendingId === grupo.familia.id}
@@ -216,6 +312,37 @@ export default function RecordatoriosView() {
           ))}
         </div>
       )}
+
+      <Modal open={showDraftModal} onClose={() => setShowDraftModal(false)} title="Borrador con IA">
+        <div className="space-y-4">
+          {draftLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <IconRefresh className="animate-spin" width={24} height={24} />
+              <span className="ml-3 text-ink-500">Generando borrador...</span>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink-700">Asunto</label>
+                <input className="input w-full" value={draftEdited.asunto} onChange={e => setDraftEdited(p => ({ ...p, asunto: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink-700">Cuerpo del email</label>
+                <textarea className="textarea h-48" value={draftEdited.cuerpo} onChange={e => setDraftEdited(p => ({ ...p, cuerpo: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => {
+                  if (draftFamiliaId) generarBorrador(draftFamiliaId, draftTipo);
+                }}><IconRefresh width={14} height={14} /> Regenerar</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowDraftModal(false)}>Cancelar</Button>
+                <Button size="sm" onClick={enviarBorrador} disabled={sendingId !== null}>
+                  {sendingId ? <IconRefresh className="animate-spin" /> : <IconSend />} Enviar
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
 
       {/* Historial */}
       {historial.length > 0 && (

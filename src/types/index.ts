@@ -79,3 +79,5 @@ export type CargoPendiente = {
   tipo: "cuota" | "material" | "extraescolar" | "comedor" | "matricula" | "otro";
   notas?: string;
 };
+
+export type { ServicioCatalogo } from "./crm";

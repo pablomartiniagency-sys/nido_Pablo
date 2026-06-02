@@ -5,26 +5,48 @@ import { useStore } from "@/lib/data/useStore";
 import type { Lead, EstadoLead, FuenteLead } from "@/types/crm";
 
 const estadosLead: Record<EstadoLead, { label: string; color: string }> = {
-  nuevo: { label: "Nuevo", color: "bg-blue-500/20 text-blue-400" },
-  contactado: { label: "Contactado", color: "bg-purple-500/20 text-purple-400" },
-  visita_programada: { label: "Visita programada", color: "bg-amber-500/20 text-amber-400" },
-  visita_realizada: { label: "Visita realizada", color: "bg-cyan-500/20 text-cyan-400" },
-  matriculado: { label: "Matriculado", color: "bg-emerald-500/20 text-emerald-400" },
-  perdido: { label: "Perdido", color: "bg-red-500/20 text-red-400" },
-  no_interesado: { label: "No interesado", color: "bg-charcoal-600/50 text-charcoal-400" },
+  nuevo: { label: "Nuevo", color: "bg-blue-100 text-blue-700" },
+  contactado: { label: "Contactado", color: "bg-purple-100 text-purple-700" },
+  visita_programada: { label: "Visita programada", color: "bg-amber-100 text-amber-700" },
+  visita_realizada: { label: "Visita realizada", color: "bg-cyan-100 text-cyan-700" },
+  matriculado: { label: "Matriculado", color: "bg-emerald-100 text-emerald-700" },
+  perdido: { label: "Perdido", color: "bg-red-100 text-red-700" },
+  no_interesado: { label: "No interesado", color: "bg-gray-100 text-ink-500" },
 };
 
 const fuentes: FuenteLead[] = ["web", "recomendacion", "google", "instagram", "facebook", "llamada", "email", "otro"];
 
 function ProbabilidadBar({ pct }: { pct: number }) {
-  const color = pct >= 75 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-charcoal-500";
+  const color = pct >= 75 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-gray-400";
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-charcoal-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs w-8 text-right">{pct}%</span>
     </div>
+  );
+}
+
+function EditableProbabilidad({ leadId, pct, onUpdate }: { leadId: string; pct: number; onUpdate: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(String(pct));
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input className="input w-16 text-xs py-1 text-right" type="number" min="0" max="100" value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { onUpdate(Math.min(100, Math.max(0, parseInt(val) || 0))); setEditing(false); } if (e.key === "Escape") setEditing(false); }}
+          autoFocus />
+        <span className="text-xs text-ink-400">%</span>
+        <button onClick={() => { onUpdate(Math.min(100, Math.max(0, parseInt(val) || 0))); setEditing(false); }} className="text-emerald-500 text-xs font-medium">OK</button>
+      </div>
+    );
+  }
+  return (
+    <button onClick={() => { setVal(String(pct)); setEditing(true); }} className="w-full text-left">
+      <ProbabilidadBar pct={pct} />
+    </button>
   );
 }
 
@@ -66,7 +88,7 @@ export default function OportunidadesView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">CRM Comercial</h2>
-          <p className="text-sm text-charcoal-400">{leads.length} leads · {pipelineStats.conversion}% conversión</p>
+          <p className="text-sm text-ink-500">{leads.length} leads · {pipelineStats.conversion}% conversión</p>
         </div>
         <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors text-sm font-medium">
           + Nuevo lead
@@ -75,29 +97,29 @@ export default function OportunidadesView() {
 
       {/* Pipeline Stats */}
       <div className="grid grid-cols-6 gap-3">
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-white">{pipelineStats.total}</p>
-          <p className="text-xs text-charcoal-400">Total leads</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-ink-900">{pipelineStats.total}</p>
+          <p className="text-xs text-ink-500">Total leads</p>
         </div>
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-blue-400">{pipelineStats.nuevos}</p>
-          <p className="text-xs text-charcoal-400">Nuevos</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-blue-600">{pipelineStats.nuevos}</p>
+          <p className="text-xs text-ink-500">Nuevos</p>
         </div>
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-amber-400">{pipelineStats.visitas}</p>
-          <p className="text-xs text-charcoal-400">Visitas</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-amber-600">{pipelineStats.visitas}</p>
+          <p className="text-xs text-ink-500">Visitas</p>
         </div>
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-emerald-400">{pipelineStats.matriculados}</p>
-          <p className="text-xs text-charcoal-400">Matriculados</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-emerald-600">{pipelineStats.matriculados}</p>
+          <p className="text-xs text-ink-500">Matriculados</p>
         </div>
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-charcoal-400">{pipelineStats.perdidos}</p>
-          <p className="text-xs text-charcoal-400">Perdidos</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-ink-500">{pipelineStats.perdidos}</p>
+          <p className="text-xs text-ink-500">Perdidos</p>
         </div>
-        <div className="bg-charcoal-800/50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-coral-400">{pipelineStats.valorPipeline.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
-          <p className="text-xs text-charcoal-400">Pipeline ponderado</p>
+        <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+          <p className="text-lg font-bold text-coral-600">{pipelineStats.valorPipeline.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
+          <p className="text-xs text-ink-500">Pipeline ponderado</p>
         </div>
       </div>
 
@@ -105,9 +127,9 @@ export default function OportunidadesView() {
       <div className="flex flex-wrap gap-3 items-center">
         <input type="text" placeholder="Buscar lead..."
           value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] px-4 py-2 bg-charcoal-800/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+          className="flex-1 min-w-[200px] px-4 py-2 bg-white shadow-sm border border-gray-200 rounded-xl text-sm text-ink-900 placeholder-ink-400 outline-none focus:border-coral-500/50" />
         <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-          className="select px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+          className="select px-3 py-2 rounded-xl text-sm border border-gray-200">
           <option value="todos">Todos los estados</option>
           {Object.entries(estadosLead).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
@@ -116,11 +138,11 @@ export default function OportunidadesView() {
       </div>
 
       {/* Tabla de leads */}
-      <div className="bg-charcoal-800/20 border border-charcoal-700/50 rounded-2xl overflow-hidden">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-charcoal-700/50 text-charcoal-400 text-xs uppercase">
+              <tr className="border-b border-gray-200 text-ink-500 text-xs uppercase">
                 <th className="text-left px-4 py-3 font-medium">Lead</th>
                 <th className="text-left px-4 py-3 font-medium">Contacto</th>
                 <th className="text-left px-4 py-3 font-medium">Hijo</th>
@@ -136,18 +158,18 @@ export default function OportunidadesView() {
                 const ops = oportunidades.filter(o => o.leadId === l.id);
                 const isExpanded = expandedId === l.id;
                 return (
-                  <tr key={l.id} className={`border-b border-charcoal-800/50 hover:bg-charcoal-800/30 cursor-pointer ${isExpanded ? 'bg-charcoal-800/30' : ''}`}
+                  <tr key={l.id} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-gray-100' : ''}`}
                     onClick={() => setExpandedId(isExpanded ? null : l.id)}>
                     <td className="px-4 py-3">
                       <p className="font-medium">{l.nombre}</p>
-                      <p className="text-xs text-charcoal-500">{l.email}</p>
+                      <p className="text-xs text-ink-400">{l.email}</p>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm">{l.telefono}</p>
-                      <p className="text-xs text-charcoal-500">{l.email}</p>
+                      <p className="text-xs text-ink-400">{l.email}</p>
                     </td>
                     <td className="px-4 py-3">
-                      {l.nombreHijo ? <><p className="text-sm">{l.nombreHijo}</p><p className="text-xs text-charcoal-500">{l.edadHijo}</p></> : <span className="text-charcoal-500">—</span>}
+                      {l.nombreHijo ? <><p className="text-sm">{l.nombreHijo}</p><p className="text-xs text-ink-400">{l.edadHijo}</p></> : <span className="text-ink-400">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs capitalize">{l.fuente === "recomendacion" ? "Recomendación" : l.fuente}</span>
@@ -156,20 +178,20 @@ export default function OportunidadesView() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${estadosLead[l.estado].color}`}>{estadosLead[l.estado].label}</span>
                     </td>
                     <td className="px-4 py-3 w-32">
-                      <ProbabilidadBar pct={l.probabilidadCierre || 0} />
+                      <EditableProbabilidad leadId={l.id} pct={l.probabilidadCierre || 0} onUpdate={(v) => updateLead(l.id, { probabilidadCierre: v })} />
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-xs">{l.fechaContacto}</p>
-                      {l.fechaVisita && <p className="text-xs text-amber-400">Visita: {l.fechaVisita}</p>}
+                      {l.fechaVisita && <p className="text-xs text-amber-600">Visita: {l.fechaVisita}</p>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <select value={l.estado} onChange={e => { e.stopPropagation(); updateLead(l.id, { estado: e.target.value as EstadoLead }); }}
-                          className="select text-xs px-2 py-1 rounded-lg border border-charcoal-700/50 w-28">
+                          className="select text-xs px-2 py-1 rounded-lg border border-gray-200 w-28">
                           {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                         </select>
                         <button onClick={e => { e.stopPropagation(); if (confirm('¿Eliminar este lead?')) removeLead(l.id); }}
-                          className="p-1.5 text-charcoal-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                          className="p-1.5 text-ink-400 hover:text-red-600 transition-colors text-xs">✕</button>
                       </div>
                     </td>
                   </tr>
@@ -179,7 +201,7 @@ export default function OportunidadesView() {
           </table>
         </div>
         {filtered.length === 0 && (
-          <p className="text-center text-charcoal-500 py-8">No se encontraron leads</p>
+          <p className="text-center text-ink-400 py-8">No se encontraron leads</p>
         )}
       </div>
 
@@ -191,16 +213,17 @@ export default function OportunidadesView() {
             {oportunidades.filter(o => o.etapa !== "cierre").map(op => {
               const lead = leads.find(l => l.id === op.leadId);
               const colorEtapa = op.etapa === "interes" ? "border-blue-500" : op.etapa === "visita" ? "border-amber-500" : op.etapa === "negociacion" ? "border-purple-500" : "border-emerald-500";
+              const bgEtapa = op.etapa === "interes" ? "bg-blue-100 text-blue-700" : op.etapa === "visita" ? "bg-amber-100 text-amber-700" : op.etapa === "negociacion" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700";
               return (
-                <div key={op.id} className={`bg-charcoal-800/30 border ${colorEtapa} border-l-4 rounded-xl p-4`}>
+                <div key={op.id} className={`bg-white shadow-sm border ${colorEtapa} border-l-4 rounded-xl p-4`}>
                   <div className="flex items-start justify-between mb-2">
                     <p className="text-sm font-medium">{op.titulo}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${colorEtapa} bg-opacity-20 text-white`}>{op.etapa}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${bgEtapa}`}>{op.etapa}</span>
                   </div>
-                  <p className="text-xs text-charcoal-400 mb-1">Lead: {lead?.nombre || "—"}</p>
-                  <p className="text-sm font-bold text-coral-400">{op.valorEstimado.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}/mes</p>
+                  <p className="text-xs text-ink-500 mb-1">Lead: {lead?.nombre || "—"}</p>
+                  <p className="text-sm font-bold text-coral-600">{op.valorEstimado.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}/mes</p>
                   <ProbabilidadBar pct={op.probabilidad} />
-                  <p className="text-xs text-charcoal-500 mt-1">Cierre estimado: {op.fechaEstimadaCierre}</p>
+                  <p className="text-xs text-ink-400 mt-1">Cierre estimado: {op.fechaEstimadaCierre}</p>
                 </div>
               );
             })}
@@ -211,7 +234,7 @@ export default function OportunidadesView() {
       {/* Modal nuevo/editar lead */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
-          <div className="bg-charcoal-800 border border-charcoal-700/50 rounded-2xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">{editingLead ? "Editar lead" : "Nuevo lead"}</h3>
             <form onSubmit={e => {
               e.preventDefault();
@@ -241,38 +264,38 @@ export default function OportunidadesView() {
             }}>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-charcoal-300">Nombre completo <span className="text-coral-400">*</span></label>
+                  <label className="block text-sm font-medium text-ink-700">Nombre completo <span className="text-coral-600">*</span></label>
                   <input name="nombre" defaultValue={editingLead?.nombre || ""} required
-                    className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                    className="w-full input" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-charcoal-300">Email <span className="text-coral-400">*</span></label>
+                    <label className="block text-sm font-medium text-ink-700">Email <span className="text-coral-600">*</span></label>
                     <input name="email" type="email" defaultValue={editingLead?.email || ""} required
-                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                      className="w-full input" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-charcoal-300">Teléfono <span className="text-coral-400">*</span></label>
+                    <label className="block text-sm font-medium text-ink-700">Teléfono <span className="text-coral-600">*</span></label>
                     <input name="telefono" defaultValue={editingLead?.telefono || ""} required
-                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                      className="w-full input" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-charcoal-300">Fuente de captación <span className="text-coral-400">*</span></label>
-                  <select name="fuente" defaultValue={editingLead?.fuente || ""} required className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                  <label className="block text-sm font-medium text-ink-700">Fuente de captación <span className="text-coral-600">*</span></label>
+                  <select name="fuente" defaultValue={editingLead?.fuente || ""} required className="select w-full px-3 py-2 rounded-xl text-sm border border-gray-200">
                     <option value="">Seleccionar fuente...</option>
                     {fuentes.map(f => <option key={f} value={f}>{f === "recomendacion" ? "Recomendación" : f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-charcoal-300">Nombre del hijo</label>
+                    <label className="block text-sm font-medium text-ink-700">Nombre del hijo</label>
                     <input name="nombreHijo" defaultValue={editingLead?.nombreHijo || ""}
-                      className="w-full px-4 py-2 bg-charcoal-900/70 border border-charcoal-700/50 rounded-xl text-sm text-white placeholder-charcoal-500 outline-none focus:border-coral-500/50" />
+                      className="w-full input" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-charcoal-300">Edad del hijo</label>
-                    <select name="edadHijo" defaultValue={editingLead?.edadHijo || ""} className="select w-full px-3 py-2 rounded-xl text-sm border border-charcoal-700/50">
+                    <label className="block text-sm font-medium text-ink-700">Edad del hijo</label>
+                    <select name="edadHijo" defaultValue={editingLead?.edadHijo || ""} className="select w-full px-3 py-2 rounded-xl text-sm border border-gray-200">
                       <option value="">Seleccionar edad...</option>
                       <option value="lactantes">Lactantes</option>
                       <option value="1 año">1 año</option>
@@ -283,7 +306,7 @@ export default function OportunidadesView() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => { setShowForm(false); setEditingLead(null); }} className="px-4 py-2 text-sm text-charcoal-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="button" onClick={() => { setShowForm(false); setEditingLead(null); }} className="px-4 py-2 text-sm text-ink-500 hover:text-ink-900 transition-colors">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-coral-500 text-white rounded-xl hover:bg-coral-600 transition-colors text-sm font-medium">{editingLead ? "Guardar cambios" : "Crear lead"}</button>
               </div>
             </form>

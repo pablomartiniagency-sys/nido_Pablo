@@ -2,11 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useStore, genId } from "@/lib/data/useStore";
-import { preverConsumo } from "@/lib/ai/simulated";
 import { eur } from "@/lib/format";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -23,7 +21,6 @@ export function SuministrosView() {
   const [form, setForm] = useState({ proveedor: "", periodo: "", consumo: "", importe: "", fecha: new Date().toISOString().split("T")[0] });
 
   const filtrados = useMemo(() => suministros.filter(s => s.tipo === tipoActivo), [suministros, tipoActivo]);
-  const prediccion = useMemo(() => preverConsumo(filtrados), [filtrados]);
 
   const handleSubmit = () => {
     if (!form.proveedor || !form.periodo || !form.importe || !form.fecha) { toast("Completa todos los campos", "error"); return; }
@@ -45,7 +42,7 @@ export function SuministrosView() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <PageHeader title="Suministros" description="Histórico, regresión lineal y previsión de consumo"
+      <PageHeader title="Suministros" description="Histórico de facturas de suministros"
         actions={
           <Button size="sm" onClick={() => setShowModal(true)}><IconPlus width={14} height={14} /> Nueva factura</Button>
         }
@@ -55,33 +52,20 @@ export function SuministrosView() {
         {TIPOS.map(t => (
           <button key={t} onClick={() => setTipoActivo(t)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition capitalize ${
-              tipoActivo === t ? "bg-coral-500/20 text-coral-300 border border-coral-500/30" : "text-ink-500 hover:text-ink-900 border border-transparent"
+              tipoActivo === t ? "bg-coral-50 text-coral-600 border border-coral-200" : "text-ink-500 hover:text-ink-900 border border-transparent"
             }`}>
             {t}
           </button>
         ))}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-1 gap-4 max-w-sm">
         <Card className="p-4">
           <div className="label mb-1">Último consumo</div>
           <div className="text-xl font-bold text-ink-900">
             {filtrados.at(-1)?.consumo ?? "—"} {filtrados.at(-1)?.unidad ?? ""}
           </div>
           <div className="text-xs text-ink-400 mt-1">{filtrados.at(-1)?.periodo ?? ""}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="label mb-1">Previsión próximo mes</div>
-          <div className="text-xl font-bold text-ink-900">
-            {prediccion.proximoMes > 0 ? eur(prediccion.proximoMes) : "—"}
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="label mb-1">Tendencia</div>
-          <Badge variant={prediccion.tendencia === "sube" ? "danger" : prediccion.tendencia === "baja" ? "success" : "info"}>
-            {prediccion.tendencia === "sube" ? "Sube" : prediccion.tendencia === "baja" ? "Baja" : "Estable"}
-          </Badge>
-          <div className="text-xs text-ink-400 mt-2">{prediccion.recomendacion}</div>
         </Card>
       </div>
 
