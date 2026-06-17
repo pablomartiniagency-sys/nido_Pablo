@@ -10,9 +10,81 @@ import { Button } from "@/components/ui/Button";
 import { IconEuro, IconAlert, IconUsers, IconBolt, IconBell } from "@/components/ui/Icons";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
+
+const COLORS_PAGOS = { pagada: "#22c55e", impago: "#ef4444", enviada: "#f59e0b" };
+const COLORS_BARRAS = { ingresos: "#3b82f6", gastos: "#f97316" };
+
+function ChartsTooltip({ active, payload, label }: any) {
+  if (!active || !payload) return null;
+  return (
+    <div className="bg-white border border-gray-200 shadow-lg rounded-xl px-3 py-2 text-xs">
+      <p className="font-semibold text-ink-900 mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }} className="font-medium">
+          {p.name}: {eur(p.value)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function DonutTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  return (
+    <div className="bg-white border border-gray-200 shadow-lg rounded-xl px-3 py-2 text-xs">
+      <p className="font-semibold text-ink-900">{d.name}: {d.value} facturas</p>
+      <p className="text-ink-500">({d.payload.porcentaje}%)</p>
+    </div>
+  );
+}
+
+function MonthlyBarChart({ data }: { data: { mes: string; ingresos: number; gastos: number }[] }) {
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+          <Tooltip content={<ChartsTooltip />} />
+          <Bar dataKey="ingresos" name="Ingresos" fill={COLORS_BARRAS.ingresos} radius={[4, 4, 0, 0]} maxBarSize={36} />
+          <Bar dataKey="gastos" name="Gastos" fill={COLORS_BARRAS.gastos} radius={[4, 4, 0, 0]} maxBarSize={36} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function PaymentDonut({ data }: { data: { name: string; value: number; color: string; porcentaje: string }[] }) {
+  return (
+    <div className="h-72 flex items-center justify-center">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" stroke="none">
+            {data.map((e, i) => (
+              <Cell key={i} fill={e.color} />
+            ))}
+          </Pie>
+          <Tooltip content={<DonutTooltip />} />
+          <Legend
+            verticalAlign="bottom"
+            iconType="circle"
+            iconSize={8}
+            formatter={(value: string) => <span className="text-xs text-ink-600">{value}</span>}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export function DashboardView() {
-  const { facturas, gastos, suministros, cargosPendientes, dashboardMetrics } = useStore();
+  const { facturas, gastos, suministros, cargosPendientes, dashboardMetrics, financialStatement } = useStore();
   const router = useRouter();
   const [alertasDismissed, setAlertasDismissed] = useState<string[]>([]);
 
@@ -21,6 +93,25 @@ export function DashboardView() {
   }, [facturas, gastos, suministros, cargosPendientes, alertasDismissed]);
 
   const { familiasCount, totalAlumnos, cobrado, pendiente, gastoMes, resultado, morosos, empleadosActivos, nominaTotal, cargosPendientesTotal, cargosVencidosCount } = dashboardMetrics;
+
+  const datosDonut = useMemo(() => {
+    const pagada = facturas.filter(f => f.estado === "pagada").length;
+    const impago = facturas.filter(f => f.estado === "impago").length;
+    const enviada = facturas.filter(f => f.estado === "enviada").length;
+    const total = pagada + impago + enviada || 1;
+    return [
+      { name: "Pagadas", value: pagada, color: COLORS_PAGOS.pagada, porcentaje: String(Math.round(pagada / total * 100)) },
+      { name: "Impagadas", value: impago, color: COLORS_PAGOS.impago, porcentaje: String(Math.round(impago / total * 100)) },
+      { name: "Enviadas", value: enviada, color: COLORS_PAGOS.enviada, porcentaje: String(Math.round(enviada / total * 100)) },
+    ].filter(d => d.value > 0);
+  }, [facturas]);
+
+  const datosBarras = useMemo(() => {
+    return financialStatement.balanceMensual.map(m => ({
+      ...m,
+      mes: m.mes.replace(" 2026", ""),
+    }));
+  }, [financialStatement]);
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -67,6 +158,17 @@ export function DashboardView() {
         <KPI label="Gasto del mes" value={eur(gastoMes)} subtitle={(() => { const m = new Date(); return ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m.getMonth()] + " " + m.getFullYear(); })()} trend="neutral" />
         <KPI label="Morosos" value={String(morosos)} trend="down" subtitle={morosos === 1 ? "1 familia" : `${morosos} familias`} />
         <KPI label="Cargos pendientes" value={eur(cargosPendientesTotal)} icon={<IconBell width={16} height={16} />} trend={cargosVencidosCount > 0 ? "down" : "neutral"} subtitle={`${cargosVencidosCount} vencidos`} />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Ingresos vs Gastos mensuales</CardTitle></CardHeader>
+          <MonthlyBarChart data={datosBarras} />
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Estado de pagos</CardTitle></CardHeader>
+          <PaymentDonut data={datosDonut} />
+        </Card>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">

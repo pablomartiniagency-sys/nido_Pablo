@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useStore } from "@/lib/data/useStore";
+import { IconSearch } from "@/components/ui/Icons";
 import type { Lead, EstadoLead, FuenteLead } from "@/types/crm";
 
 const estadosLead: Record<EstadoLead, { label: string; color: string }> = {
@@ -96,7 +97,7 @@ export default function OportunidadesView() {
       </div>
 
       {/* Pipeline Stats */}
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
           <p className="text-lg font-bold text-ink-900">{pipelineStats.total}</p>
           <p className="text-xs text-ink-500">Total leads</p>
@@ -125,9 +126,10 @@ export default function OportunidadesView() {
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 items-center">
-        <input type="text" placeholder="Buscar lead..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] px-4 py-2 bg-white shadow-sm border border-gray-200 rounded-xl text-sm text-ink-900 placeholder-ink-400 outline-none focus:border-coral-500/50" />
+        <div className="relative flex-1 min-w-[200px]">
+          <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+          <input type="text" placeholder="Buscar lead..." value={search} onChange={e => setSearch(e.target.value)} className="input !pl-10 w-full" />
+        </div>
         <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
           className="select px-3 py-2 rounded-xl text-sm border border-gray-200">
           <option value="todos">Todos los estados</option>

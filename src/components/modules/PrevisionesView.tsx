@@ -7,8 +7,9 @@ import { eur, pct } from "@/lib/format";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { IconEdit, IconCheck, IconX } from "@/components/ui/Icons";
+import { IconEdit, IconCheck, IconX, IconSparkles } from "@/components/ui/Icons";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 
 type TabSection = "pyg" | "balance" | "ratios";
 
@@ -54,6 +55,7 @@ function EditableBalanceRow({ label, value, field, editingField, editValue, isOv
 export function PrevisionesView() {
   const { facturas, gastos } = useStore();
   const router = useRouter();
+  const { toast } = useToast();
 
   const reporte = useMemo(() => generarReporteFinanciero(facturas, gastos, ""), [facturas, gastos]);
   const ratios = useMemo(() => calcularRatios(reporte), [reporte]);
@@ -61,6 +63,27 @@ export function PrevisionesView() {
   const [balanceOverrides, setBalanceOverrides] = useState<Partial<Record<BalanceField, number>>>({});
   const [editingField, setEditingField] = useState<BalanceField | null>(null);
   const [editValue, setEditValue] = useState("");
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnalisis, setAiAnalisis] = useState<any>(null);
+
+  const analizarConIA = async () => {
+    setAiLoading(true);
+    setAiAnalisis(null);
+    try {
+      const res = await fetch("/api/analisis-financiero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reporte),
+      });
+      const json = await res.json();
+      setAiAnalisis(json.analisis);
+    } catch {
+      toast("Error al conectar con el análisis IA", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const getEffectiveBalance = useCallback(() => {
     const caja = balanceOverrides.caja ?? reporte.activos.caja;
@@ -310,12 +333,80 @@ export function PrevisionesView() {
               {reporte.endeudamiento > 0.5 && <p className="text-amber-600">⚠️ El nivel de endeudamiento es elevado. Evita nuevas deudas hasta reducir la ratio.</p>}
             </div>
           </Card>
-          <div className="flex justify-center mt-6">
+
+          <div className="flex justify-center gap-3 mt-6">
+            <button onClick={analizarConIA} disabled={aiLoading}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-lapis-500 to-lapis-600 text-white text-sm font-medium hover:from-lapis-600 hover:to-lapis-700 transition disabled:opacity-50 flex items-center gap-2">
+              <IconSparkles width={16} height={16} />
+              {aiLoading ? "Analizando..." : "Analizar con IA"}
+            </button>
             <button onClick={() => router.push("/asistente")}
               className="px-6 py-3 rounded-xl bg-coral-50 border border-coral-200 text-coral-600 text-sm font-medium hover:bg-coral-100 transition">
-              Preguntar al agente IA sobre estos datos
+              Preguntar al agente IA
             </button>
           </div>
+
+          {aiAnalisis && (
+            <Card className="p-5 border-lapis-200 border-2">
+              <div className="flex items-center gap-2 mb-4">
+                <IconSparkles width={18} height={18} className="text-lapis-500" />
+                <span className="font-semibold text-ink-900">Análisis IA</span>
+              </div>
+              <p className="text-sm text-ink-700 mb-4">{aiAnalisis.diagnostico}</p>
+
+              {aiAnalisis.fortalezas?.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1.5">Fortalezas</div>
+                  <ul className="space-y-1">
+                    {aiAnalisis.fortalezas.map((f: string, i: number) => (
+                      <li key={i} className="text-xs text-ink-600 flex items-start gap-1.5">
+                        <span className="text-emerald-500 mt-0.5">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiAnalisis.riesgos?.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1.5">Riesgos</div>
+                  <ul className="space-y-1">
+                    {aiAnalisis.riesgos.map((r: string, i: number) => (
+                      <li key={i} className="text-xs text-ink-600 flex items-start gap-1.5">
+                        <span className="text-amber-500 mt-0.5">⚠</span> {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiAnalisis.recomendaciones?.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-lapis-600 uppercase tracking-wider mb-1.5">Recomendaciones</div>
+                  <ul className="space-y-1">
+                    {aiAnalisis.recomendaciones.map((r: string, i: number) => (
+                      <li key={i} className="text-xs text-ink-600 flex items-start gap-1.5">
+                        <span className="text-lapis-500 mt-0.5">→</span> {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiAnalisis.alertas?.length > 0 && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                  <div className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-1.5">Alertas críticas</div>
+                  <ul className="space-y-1">
+                    {aiAnalisis.alertas.map((a: string, i: number) => (
+                      <li key={i} className="text-xs text-red-600 flex items-start gap-1.5">
+                        <span className="text-red-500 mt-0.5">!</span> {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       )}
     </div>

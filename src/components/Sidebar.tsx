@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
 import { useStore } from "@/lib/data/useStore";
+import { useAuth } from "@/lib/auth/AuthContext";
 import {
   IconDashboard, IconAccounting, IconInvoice, IconFamilies,
   IconChat, IconForecast, IconBolt, IconBowl, IconUsers, IconPayroll, IconSettings, IconLogout,
-  IconGraduation, IconTrendingUp, IconBell, IconDownload, IconUpload, IconClipboard, IconHelp,
+  IconGraduation, IconTrendingUp, IconBell, IconDownload, IconUpload, IconClipboard, IconHelp, IconEuro,
 } from "@/components/ui/Icons";
 
 const ITEMS = [
@@ -24,10 +25,12 @@ const ITEMS = [
   { section:"contable", href:"/oportunidades",  label:"Oportunidades",icon:<IconTrendingUp /> },
   { section:"contable", href:"/recordatorios",  label:"Recordatorios", icon:<IconBell /> },
   { section:"contable", href:"/seneca",         label:"Séneca",       icon:<IconClipboard />,  andaluciaOnly: true },
-  { section:"sistema",  href:"/exportar",       label:"Exportar datos",icon:<IconDownload /> },
-  { section:"sistema",  href:"/importar",       label:"Importar datos",icon:<IconUpload /> },
+  { section:"sistema",  href:"/exportar",       label:"Exportar datos",icon:<IconDownload width={18} height={18} /> },
+  { section:"sistema",  href:"/importar",       label:"Importar datos",icon:<IconUpload width={18} height={18} /> },
+  { section:"sistema",  href:"/planes",         label:"Planes",        icon:<IconEuro /> },
   { section:"sistema",  href:"/configuracion",  label:"Configuración",icon:<IconSettings /> },
   { section:"sistema",  href:"/ayuda",          label:"Ayuda",         icon:<IconHelp /> },
+  { section:"sistema",  href:"#admin",          label:"Panel de administración", icon:<IconSettings />, adminOnly: true },
 ];
 
 const SECCIONES = [
@@ -39,11 +42,30 @@ const SECCIONES = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { configuracion } = useStore();
+  const { user, logout } = useAuth();
   const esAndalucia = configuracion.comunidadAutonoma === "Andalucía";
-  const items = ITEMS.filter(i => !i.andaluciaOnly || esAndalucia);
+  const items = ITEMS.filter(i => (!i.andaluciaOnly || esAndalucia) && (!i.adminOnly || user?.isMaster));
+
+  const goToAdminPanel = async () => {
+    const { createIdentityClient } = await import("@/lib/supabase-identity");
+    const identity = createIdentityClient();
+    if (!identity) return;
+    const { data: { session } } = await identity.auth.getSession();
+    if (session) {
+      const hash = new URLSearchParams({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: String(session.expires_in || 3600),
+        token_type: "bearer",
+      }).toString();
+      window.location.href = "https://nido-identity.netlify.app#" + hash;
+    }
+  };
+
   return (
-    <aside className="w-64 shrink-0 border-r border-gray-200 bg-white/90 backdrop-blur-xl py-6 px-4 hidden md:flex flex-col">
+    <aside className="w-64 shrink-0 border-r border-gray-200 bg-white/90 backdrop-blur-xl py-6 px-4 hidden lg:flex flex-col sticky top-0 h-screen self-start">
       <div className="px-2 mb-8"><Logo /></div>
       <nav className="flex-1 space-y-6">
         {SECCIONES.map(([key, label]) => (
@@ -51,6 +73,15 @@ export function Sidebar() {
             <div className="label px-3 mb-2">{label}</div>
             {items.filter(i => i.section === key).map(it => {
               const active = pathname === it.href;
+              if (it.adminOnly) {
+                return (
+                  <button key={it.href} onClick={goToAdminPanel}
+                    className="relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition mb-0.5 text-ink-500 hover:text-ink-900 hover:bg-gray-50 border border-transparent">
+                    <span className="shrink-0">{it.icon}</span>
+                    <span>{it.label}</span>
+                  </button>
+                );
+              }
               return (
                 <Link key={it.href} href={it.href}
                   className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition mb-0.5 ${
@@ -67,9 +98,9 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      <Link href="/login" className="mt-6 px-3 py-2 text-xs text-ink-400 hover:text-ink-900 flex items-center gap-2">
+      <button onClick={async () => { await logout(); router.push("/login"); }} className="mt-6 w-full px-3 py-2 text-xs text-ink-400 hover:text-ink-900 flex items-center gap-2">
         <IconLogout width={14} height={14}/> Cerrar sesión
-      </Link>
+      </button>
     </aside>
   );
 }

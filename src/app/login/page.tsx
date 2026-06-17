@@ -1,96 +1,174 @@
 "use client";
 
 import { useState } from "react";
-import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const { login, signup, loginAsDemo } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const { user, loading, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-ink-400 text-sm animate-pulse p-6">
+        Cargando...
+      </div>
+    );
+  }
+
+  if (user) {
+    router.replace("/dashboard");
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { toast("Email y contraseña requeridos", "error"); return; }
-    if (mode === "signup" && !name) { toast("Nombre requerido", "error"); return; }
-    setLoading(true);
-
-    const result = mode === "login"
-      ? await login(email, password)
-      : await signup(email, password, name);
-
+    setError("");
+    if (!email || !password) { setError("Completa todos los campos"); return; }
+    setSubmitting(true);
+    const result = await login(email, password);
+    setSubmitting(false);
     if (result.success) {
-      toast(mode === "login" ? "Sesión iniciada" : "Cuenta creada");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } else {
-      toast(result.error || "Error", "error");
+      setError(result.error || "Credenciales incorrectas");
     }
-    setLoading(false);
-  };
-
-  const handleDemo = () => {
-    loginAsDemo();
-    toast("Sesión demo de 1 hora iniciada");
-    router.push("/dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-grid bg-glow flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4"><Logo href="/" /></div>
-          <h1 className="text-xl font-bold text-ink-900">Acceder a Nido</h1>
-          <p className="text-sm text-ink-500 mt-1">Portal de gestión escolar</p>
+    <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,98%)] p-4 relative">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <svg className="absolute w-full h-full" viewBox="0 0 1440 1024" fill="none" preserveAspectRatio="xMidYMid slice">
+          {/* Nidos */}
+          <g transform="translate(180, 780)" opacity="0.25">
+            <path d="M-20,0 C-16,19 -7,24 0,24 C7,24 16,19 20,0" fill="none" stroke="#A5C8E8" strokeWidth="1" />
+            <path d="M-13,3 C-8,16 -3,20 0,20 C3,20 8,16 13,3" fill="none" stroke="#A5C8E8" strokeWidth="0.7" />
+          </g>
+          <g transform="translate(1100, 500)" opacity="0.22">
+            <path d="M-18,0 C-14,17 -6,21 0,21 C6,21 14,17 18,0" fill="none" stroke="#90B4D6" strokeWidth="0.9" />
+            <path d="M-11,3 C-7,13 -3,17 0,17 C3,17 7,13 11,3" fill="none" stroke="#90B4D6" strokeWidth="0.6" />
+          </g>
+
+          {/* Flores */}
+          <g transform="translate(380, 200)" opacity="0.3">
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(0)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(72)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(144)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(216)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(288)" />
+          </g>
+          <g transform="translate(730, 830)" opacity="0.22">
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#71A8D9" transform="rotate(0)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#71A8D9" transform="rotate(72)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#71A8D9" transform="rotate(144)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#71A8D9" transform="rotate(216)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#71A8D9" transform="rotate(288)" />
+          </g>
+          <g transform="translate(80, 400)" opacity="0.25">
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(0)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(72)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(144)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(216)" />
+            <path d="M0,-4 C4,-4 7,-1 7,4 C7,7 4,9 0,9 C-4,9 -7,7 -7,4 C-7,-1 -4,-4 0,-4Z" fill="#CEE1F2" transform="rotate(288)" />
+          </g>
+          <g transform="translate(1280, 680)" opacity="0.22">
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#C4E0F0" transform="rotate(0)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#C4E0F0" transform="rotate(72)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#C4E0F0" transform="rotate(144)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#C4E0F0" transform="rotate(216)" />
+            <path d="M0,-3.5 C3.5,-3.5 6,-0.5 6,3.5 C6,6.5 3.5,8 0,8 C-3.5,8 -6,6.5 -6,3.5 C-6,-0.5 -3.5,-3.5 0,-3.5Z" fill="#C4E0F0" transform="rotate(288)" />
+          </g>
+
+          {/* Soles */}
+          <g transform="translate(1200, 150)" opacity="0.28">
+            <rect x="-3" y="-3" width="6" height="6" rx="1" fill="#A5C8E8" />
+            <line x1="0" y1="-8" x2="0" y2="-12" stroke="#A5C8E8" strokeWidth="1" strokeLinecap="round" />
+            <line x1="8" y1="0" x2="12" y2="0" stroke="#A5C8E8" strokeWidth="1" strokeLinecap="round" />
+            <line x1="0" y1="8" x2="0" y2="12" stroke="#A5C8E8" strokeWidth="1" strokeLinecap="round" />
+            <line x1="-8" y1="0" x2="-12" y2="0" stroke="#A5C8E8" strokeWidth="1" strokeLinecap="round" />
+            <line x1="5.5" y1="-5.5" x2="8" y2="-8" stroke="#A5C8E8" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="5.5" y1="5.5" x2="8" y2="8" stroke="#A5C8E8" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="-5.5" y1="5.5" x2="-8" y2="8" stroke="#A5C8E8" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="-5.5" y1="-5.5" x2="-8" y2="-8" stroke="#A5C8E8" strokeWidth="0.6" strokeLinecap="round" />
+          </g>
+          <g transform="translate(500, 700)" opacity="0.22">
+            <rect x="-2" y="-2" width="4" height="4" rx="1" fill="#4A8AC9" />
+            <line x1="0" y1="-7" x2="0" y2="-10" stroke="#4A8AC9" strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="7" y1="0" x2="10" y2="0" stroke="#4A8AC9" strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="0" y1="7" x2="0" y2="10" stroke="#4A8AC9" strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="-7" y1="0" x2="-10" y2="0" stroke="#4A8AC9" strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="5" y1="-5" x2="7" y2="-7" stroke="#4A8AC9" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="5" y1="5" x2="7" y2="7" stroke="#4A8AC9" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="-5" y1="5" x2="-7" y2="7" stroke="#4A8AC9" strokeWidth="0.6" strokeLinecap="round" />
+            <line x1="-5" y1="-5" x2="-7" y2="-7" stroke="#4A8AC9" strokeWidth="0.6" strokeLinecap="round" />
+          </g>
+
+          {/* Ondas */}
+          <path d="M0 930 Q200 895 400 930 T800 930 T1200 930 T1440 930" stroke="#A5C8E8" strokeWidth="0.6" opacity="0.15" fill="none" />
+          <path d="M0 960 Q250 925 500 960 T1000 960 T1440 960" stroke="#90B4D6" strokeWidth="0.5" opacity="0.12" fill="none" />
+        </svg>
+      </div>
+      <div className="card p-8 w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="flex justify-center mb-3">
+            <Logo href="/" />
+          </div>
+          <div className="text-xs text-ink-400 mt-1">Inicia sesión en tu centro</div>
         </div>
 
-        <div className="glass rounded-2xl p-6 space-y-4">
-          <div className="flex gap-1 bg-gray-50 rounded-lg p-1">
-            <button onClick={() => setMode("login")}
-              className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${mode === "login" ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>
-              Iniciar sesión
-            </button>
-            <button onClick={() => setMode("signup")}
-              className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${mode === "signup" ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>
-              Crear cuenta
-            </button>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="text-xs font-medium text-ink-600 mb-1 block">Email</label>
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="email@ejemplo.com"
+              autoComplete="email"
+              autoFocus
+            />
+          </div>
+          <div className="mb-6">
+            <label className="text-xs font-medium text-ink-600 mb-1 block">Contraseña</label>
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              autoComplete="current-password"
+              onKeyDown={e => e.key === "Enter" && handleSubmit(e)}
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <input className="input" placeholder="Nombre del centro" value={name} onChange={e => setName(e.target.value)} />
-            )}
-            <input className="input" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-            <input className="input" type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} />
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Cargando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
-            </Button>
-          </form>
+          {error && (
+            <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+              {error}
+            </div>
+          )}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.06]" /></div>
-            <div className="relative flex justify-center text-xs"><span className="bg-[#131316] px-2 text-ink-400">o</span></div>
-          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary w-full disabled:opacity-50"
+          >
+            {submitting ? "Entrando..." : "Iniciar sesión"}
+          </button>
+        </form>
 
-          <Button variant="secondary" className="w-full" onClick={handleDemo}>
-            Probar demo gratuita (1 hora)
-          </Button>
-
-          <div className="text-[10px] text-ink-900/25 text-center space-y-1">
-            <p>Demo: acceso instantáneo con datos de ejemplo</p>
-            <p>Tu sesión demo expirará automáticamente en 60 minutos</p>
-          </div>
-        </div>
-
-        <div className="text-center mt-6">
-          <a href="/" className="text-xs text-ink-400 hover:text-ink-500">← Volver a Nido</a>
+        <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+          <a
+            href="https://nido-identity.netlify.app/login"
+            className="text-[11px] text-lapis-500 hover:underline"
+          >
+            Acceso administradores
+          </a>
         </div>
       </div>
     </div>

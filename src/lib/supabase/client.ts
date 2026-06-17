@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 export function createClient() {
   if (!env.supabaseUrl || !env.supabaseAnonKey || env.supabaseAnonKey === "pon_aqui_tu_anon_key") {
     if (typeof window !== "undefined") {
-      console.warn("⚠️ Supabase no configurado. Modo demo con localStorage activo.");
+      console.warn("⚠️ Supabase no configurado.");
     }
     return null;
   }

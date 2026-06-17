@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useStore } from "@/lib/data/StoreContext";
 
 interface SlideProps {
   titulo: string;
@@ -14,7 +15,7 @@ interface SlideProps {
 const PASOS: SlideProps[] = [
   {
     titulo: "Bienvenido a Nido",
-    descripcion: "Tu secretaría digital para escuelas infantiles (0-3 años)",
+    descripcion: "Tu asistente para escuelas infantiles (0-3 años)",
     detalle: "Gestiona familias, facturas, gastos, empleados, alumnos y más desde un solo lugar. Todo lo que necesitas para administrar tu escuela infantil de forma digital y profesional.",
     icono: "🏫",
     color: "from-lapis-400 to-lapis-600",
@@ -86,6 +87,7 @@ const PASOS: SlideProps[] = [
 
 export function OnboardingModal() {
   const { user } = useAuth();
+  const { onboardingVersion } = useStore();
   const [paso, setPaso] = useState(0);
   const [open, setOpen] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -110,10 +112,11 @@ export function OnboardingModal() {
     try {
       if (!localStorage.getItem(key)) {
         setOpen(true);
+        setPaso(0);
         localStorage.setItem(key, "done");
       }
     } catch {}
-  }, [user]);
+  }, [user, onboardingVersion]);
 
   useEffect(() => {
     if (open) {

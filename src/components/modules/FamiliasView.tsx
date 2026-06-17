@@ -147,7 +147,7 @@ export function FamiliasView() {
 
       <div className="relative max-w-md">
         <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-        <input className="input pl-10" placeholder="Buscar familia o alumno..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+        <input className="input !pl-10" placeholder="Buscar familia o alumno..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

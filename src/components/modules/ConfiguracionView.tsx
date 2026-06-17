@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { getStaffUsers, removeStaffUser as removeLocalStaff, updateStaffPassword as updateLocalStaffPassword } from "@/lib/auth/staff";
+import { getStaffUsers, addStaffUser, removeStaffUser as removeLocalStaff, updateStaffPassword as updateLocalStaffPassword } from "@/lib/auth/staff";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -14,8 +14,8 @@ import { useStore } from "@/lib/data/useStore";
 import { COMUNIDADES_AUTONOMAS } from "@/types/crm";
 
 export function ConfiguracionView() {
-  const { user, isDemo, demoMinutesLeft, logout, addStaffUser } = useAuth();
-  const { configuracion, updateConfiguracion } = useStore();
+  const { user, logout } = useAuth();
+  const { configuracion, updateConfiguracion, replayOnboarding } = useStore();
   const { toast } = useToast();
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [staffForm, setStaffForm] = useState({ email: "", password: "", name: "" });
@@ -37,15 +37,11 @@ export function ConfiguracionView() {
     if (!staffForm.email || !staffForm.password || !staffForm.name) {
       toast("Completa todos los campos", "error"); return;
     }
-    const result = await addStaffUser(staffForm.email, staffForm.password, staffForm.name);
-    if (result.success) {
-      toast(`Usuario ${staffForm.email} creado`);
-      setStaffList(prev => [...prev, { id: Date.now().toString(), email: staffForm.email, name: staffForm.name }]);
-      setStaffForm({ email: "", password: "", name: "" });
-      setShowAddStaff(false);
-    } else {
-      toast(result.error || "Error al crear usuario", "error");
-    }
+    addStaffUser(staffForm.email, staffForm.password, staffForm.name);
+    toast(`Usuario ${staffForm.email} creado`);
+    setStaffList(prev => [...prev, { id: Date.now().toString(), email: staffForm.email, name: staffForm.name }]);
+    setStaffForm({ email: "", password: "", name: "" });
+    setShowAddStaff(false);
   };
 
   const handleDeleteStaff = async (userId: string, email: string) => {
@@ -126,7 +122,7 @@ export function ConfiguracionView() {
                 {user?.role === "owner" ? "Propietario" : user?.role === "staff" ? "Personal" : "Demo"}
               </Badge>
             </div>
-            {user?.role === "owner" && !isDemo && (
+            {user?.role === "owner" && (
               <div className="pt-2">
                 <Button variant="ghost" size="sm" onClick={() => setShowPasswordForm(!showPasswordForm)}>
                   Cambiar contraseña
@@ -147,13 +143,7 @@ export function ConfiguracionView() {
                 </div>
               </div>
             )}
-            {isDemo && (
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <div className="text-sm font-medium text-amber-300 mb-1">⏳ Sesión demo</div>
-                <div className="text-xs text-ink-600">Tu sesión expira en <strong className="text-amber-700">{demoMinutesLeft} minutos</strong>.</div>
-                <div className="text-xs text-ink-500 mt-2">Los datos se guardan en localStorage.</div>
-              </div>
-            )}
+
             <div className="pt-4">
               <Button variant="danger" size="sm" onClick={logout}>Cerrar sesión</Button>
             </div>
@@ -237,9 +227,7 @@ export function ConfiguracionView() {
           <CardTitle>Usuarios secundarios</CardTitle>
           {user?.role === "owner" && <Button size="sm" onClick={() => setShowAddStaff(true)}><IconPlus width={14} height={14} /> Añadir</Button>}
         </CardHeader>
-        {isDemo ? (
-          <p className="text-sm text-ink-500">Inicia sesión como propietario para gestionar usuarios secundarios.</p>
-        ) : user?.role === "staff" ? (
+        {user?.role === "staff" ? (
           <p className="text-sm text-ink-500">Solo el propietario puede gestionar usuarios secundarios.</p>
         ) : (
           <>
@@ -273,13 +261,13 @@ export function ConfiguracionView() {
             </div>
             </>
           )}
-          <p className="text-[10px] text-ink-400 mt-3">Cada cuenta secundaria opera con su propia base de datos independiente (localStorage). Los datos no se comparten entre cuentas.</p>
+          <p className="text-[10px] text-ink-400 mt-3">Cada usuario ve solo sus propios datos. Los datos se guardan en la nube.</p>
         </Card>
 
       {showAddStaff && (
         <Card>
           <CardHeader><CardTitle>Nuevo usuario secundario</CardTitle></CardHeader>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input className="input" placeholder="Nombre" value={staffForm.name} onChange={e => setStaffForm(p => ({ ...p, name: e.target.value }))} />
             <input className="input" placeholder="Email" type="email" value={staffForm.email} onChange={e => setStaffForm(p => ({ ...p, email: e.target.value }))} />
             <input className="input" placeholder="Contraseña" type="password" value={staffForm.password} onChange={e => setStaffForm(p => ({ ...p, password: e.target.value }))} />
@@ -306,6 +294,10 @@ export function ConfiguracionView() {
           <div className="flex items-center justify-between py-2 border-b border-gray-200/40">
             <span className="text-ink-500">Política de privacidad</span>
             <a href="/privacidad" className="text-coral-400 hover:text-coral-300 text-sm">Ver</a>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-ink-500">Tour de bienvenida</span>
+            <Button variant="ghost" size="sm" onClick={() => { replayOnboarding(); toast("Tour reiniciado", "success"); }}>Reiniciar tour</Button>
           </div>
         </div>
       </Card>

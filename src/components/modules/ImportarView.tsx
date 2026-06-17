@@ -21,23 +21,38 @@ interface Mapeo {
 }
 
 const PLANTILLAS: Record<EntidadImportable, { label: string; columnas: string[]; ejemplo: string }> = {
-  familias: { label: "Familias", columnas: ["nombre", "email", "telefono", "iban", "alumnos"], ejemplo: "Familia García López,ana@email.com,612345678,ES912100...,Martina (3a); Leo (1a)" },
-  facturas: { label: "Facturas", columnas: ["familiaId", "periodo", "concepto", "importe", "estado"], ejemplo: "fam-1,Junio 2026,Mensualidad,420,pagada" },
-  gastos: { label: "Gastos", columnas: ["fecha", "proveedor", "concepto", "importe", "categoria", "iva"], ejemplo: "2026-06-03,Makro,Pedido semanal,342.80,alimentacion,21" },
-  empleados: { label: "Empleados", columnas: ["nombre", "dni", "puesto", "salarioBrutoMensual", "activo"], ejemplo: "María José Fernández,12345678A,Directora,2400,true" },
-  alumnos: { label: "Alumnos", columnas: ["nombre", "familiaId", "fechaNac", "curso", "estado"], ejemplo: "Martina García,fam-1,2022-03-15,3 años,activo" },
-  leads: { label: "Leads", columnas: ["nombre", "email", "telefono", "fuente", "estado"], ejemplo: "Cliente Potencial,cliente@email.com,612345678,web,nuevo" },
+  familias: { label: "Familias", columnas: ["nombre", "email", "telefono", "iban", "alumno_1", "alumno_2", "alumno_3", "alumno_4", "alumno_5"], ejemplo: "Familia García López;ana@email.com;612345678;ES912100...;Martina (3a);Leo (1a);;" },
+  facturas: { label: "Facturas", columnas: ["familiaId", "periodo", "concepto", "importe", "estado"], ejemplo: "fam-1;Junio 2026;Mensualidad;420;pagada" },
+  gastos: { label: "Gastos", columnas: ["fecha", "proveedor", "concepto", "importe", "categoria", "iva"], ejemplo: "2026-06-03;Makro;Pedido semanal;342.80;alimentacion;21" },
+  empleados: { label: "Empleados", columnas: ["nombre", "dni", "puesto", "salarioBrutoMensual", "activo"], ejemplo: "María José Fernández;12345678A;Directora;2400;true" },
+  alumnos: { label: "Alumnos", columnas: ["nombre", "familiaId", "fechaNac", "curso", "estado"], ejemplo: "Martina García;fam-1;2022-03-15;3 años;activo" },
+  leads: { label: "Leads", columnas: ["nombre", "email", "telefono", "fuente", "estado"], ejemplo: "Cliente Potencial;cliente@email.com;612345678;web;nuevo" },
 };
 
+function detectDelimiter(primeraLinea: string): string {
+  const comas = (primeraLinea.match(/,/g) || []).length;
+  const puntoycoma = (primeraLinea.match(/;/g) || []).length;
+  const tabs = (primeraLinea.match(/\t/g) || []).length;
+  if (puntoycoma > comas && puntoycoma > tabs) return ";";
+  if (tabs > comas && tabs > puntoycoma) return "\t";
+  return ",";
+}
+
 function parseCSV(texto: string): string[][] {
-  const lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
+  let lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
+  // Strip sep=; or sep=, header line
+  if (lineas.length > 0 && /^sep=[:;,\t]/.test(lineas[0])) {
+    lineas = lineas.slice(1);
+  }
+  if (lineas.length === 0) return [];
+  const delim = detectDelimiter(lineas[0]);
   return lineas.map(l => {
     const result: string[] = [];
     let current = "";
     let inQuotes = false;
     for (const ch of l) {
       if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if (ch === "," && !inQuotes) { result.push(current.trim()); current = ""; continue; }
+      if (ch === delim && !inQuotes) { result.push(current.trim()); current = ""; continue; }
       current += ch;
     }
     result.push(current.trim());
@@ -121,6 +136,12 @@ export default function ImportarView() {
             obj.documentos = [];
             obj.autorizacionImagen = false;
           }
+          if (entidad === "familias") {
+            obj.alumnos = [obj.alumno_1, obj.alumno_2, obj.alumno_3, obj.alumno_4, obj.alumno_5].filter(Boolean);
+            obj.servicios = [];
+            obj.telefono = obj.telefono || "";
+            obj.iban = obj.iban || "";
+          }
           if (entidad === "leads") {
             obj.fechaContacto = new Date().toISOString().split("T")[0];
           }
@@ -153,8 +174,8 @@ export default function ImportarView() {
 
   const descargarPlantilla = (entidad: EntidadImportable) => {
     const p = PLANTILLAS[entidad];
-    const cabecera = p.columnas.join(",");
-    const csv = `\uFEFF${cabecera}\n${p.ejemplo}\n`;
+    const cabecera = p.columnas.join(";");
+    const csv = `\uFEFFsep=;\n${cabecera}\n${p.ejemplo}\n`;
     const blob = new Blob([csv], { type: "text/csv;charset=UTF-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -185,13 +206,13 @@ export default function ImportarView() {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !mapeo && fileInputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 cursor-pointer transition-all text-center ${
+        className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 md:p-12 cursor-pointer transition-all text-center ${
           dragOver ? "border-coral-400 bg-coral-500/10" : mapeo ? "border-emerald-400/50 bg-emerald-500/5" : "border-white/10 bg-white/[0.02] hover:border-coral-500/30"
         }`}
       >
         {mapeo ? (
           <div className="text-center">
-            <IconCheck width={40} height={40} className="mx-auto text-emerald-400 mb-3" />
+            <IconCheck width={24} height={24} className="mx-auto text-emerald-400 mb-2" />
             <p className="text-sm font-medium text-emerald-900">{mapeo.data.length} registros detectados</p>
             <p className="text-xs text-emerald-700 mt-1">{PLANTILLAS[mapeo.entidad].label}</p>
             {mapeo.errores.length > 0 && (
@@ -241,7 +262,7 @@ export default function ImportarView() {
 
       {importado && (
         <Card className="p-8 text-center border-emerald-500/20 bg-emerald-500/5">
-          <IconCheck width={48} height={48} className="mx-auto text-emerald-400 mb-3" />
+          <IconCheck width={28} height={28} className="mx-auto text-emerald-400 mb-2" />
           <h3 className="text-lg font-bold text-emerald-900 mb-1">Importación completada</h3>
           <p className="text-sm text-emerald-700">Los datos ya están disponibles en la aplicación.</p>
           <Button variant="ghost" size="sm" className="mt-4" onClick={() => { setMapeo(null); setImportado(false); }}>Importar otro archivo</Button>

@@ -4,14 +4,14 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nido — La secretaría digital de tu escuela infantil · Delega",
+  title: "Nido — El asistente de tu escuela infantil · Delega",
   description: "Nido automatiza contabilidad, facturación SEPA, comedor, empleados y nóminas.",
-  icons: { icon: "/delega_logo.png" },
+  icons: { icon: "/logo-nido.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

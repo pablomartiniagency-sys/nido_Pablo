@@ -152,7 +152,7 @@ export function NominasView() {
                       <td colSpan={8} className="p-0">
                         <div className="px-6 py-3 border-b border-gray-100">
                           <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">Desglose del cálculo</div>
-                          <div className="grid grid-cols-4 gap-4 text-xs">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                             <div className="p-2 rounded-lg bg-white border border-gray-200 text-center">
                               <div className="text-ink-400 mb-0.5">Bruto</div>
                               <div className="font-medium text-ink-900">{eur(n.bruto)}</div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useStore } from "@/lib/data/useStore";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconPlus } from "@/components/ui/Icons";
+import { IconPlus, IconSparkles, IconRefresh } from "@/components/ui/Icons";
 import Link from "next/link";
 import type { Incidencia, MenuSemanal } from "@/types";
 import type { AlumnoPerfil } from "@/types/crm";
@@ -21,13 +21,53 @@ const DIAS = [
   { key: "viernes", label: "Viernes" },
 ] as const;
 
+const ALERGENO_COLORS: Record<string, string> = {
+  leche: "bg-blue-100 text-blue-700",
+  huevo: "bg-yellow-100 text-yellow-700",
+  gluten: "bg-amber-100 text-amber-700",
+  "frutos secos": "bg-orange-100 text-orange-700",
+  pescado: "bg-cyan-100 text-cyan-700",
+  marisco: "bg-teal-100 text-teal-700",
+  soja: "bg-lime-100 text-lime-700",
+  sésamo: "bg-stone-100 text-stone-700",
+  sulfitos: "bg-purple-100 text-purple-700",
+  altramuz: "bg-pink-100 text-pink-700",
+  moluscos: "bg-indigo-100 text-indigo-700",
+};
+
 export function ComedorView() {
   const { menu, incidencias, alumnos, updateMenu, addIncidencia, updateIncidencia } = useStore();
   const { toast } = useToast();
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [menuForm, setMenuForm] = useState({ primero: "", segundo: "", postre: "" });
   const [showIncidencia, setShowIncidencia] = useState(false);
+  const [editingIncId, setEditingIncId] = useState<string | null>(null);
   const [incForm, setIncForm] = useState({ alumno: "", tipo: "otro" as Incidencia["tipo"], descripcion: "", gravedad: "leve" as Incidencia["gravedad"] });
+
+  const [alergenoLoading, setAlergenoLoading] = useState(false);
+  const [alergenosDetectados, setAlergenosDetectados] = useState<{ dia: string; plato: string; nombre: string; alergenos: string[] }[]>([]);
+
+  const analizarAlergenos = useCallback(async () => {
+    setAlergenoLoading(true);
+    try {
+      const menuArray = DIAS.map(d => ({ dia: d.key, ...menu[d.key] }));
+      const res = await fetch("/api/detectar-alergenos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ menu: menuArray }),
+      });
+      const json = await res.json();
+      setAlergenosDetectados(json.alergenos || []);
+      if (!json.alergenos?.length) toast("No se detectaron alérgenos en el menú", "info");
+      else toast(`Detectados alérgenos en ${json.alergenos.length} plato${json.alergenos.length > 1 ? "s" : ""}`, "info");
+    } catch {
+      toast("Error al analizar alérgenos", "error");
+    } finally {
+      setAlergenoLoading(false);
+    }
+  }, [menu, toast]);
+
+  const getAlergenosForDay = (dia: string) => alergenosDetectados.filter(a => a.dia === dia);
 
   const alergenos = incidencias.filter(i => i.tipo === "alergia" && !i.resuelta);
 
@@ -47,21 +87,33 @@ export function ComedorView() {
     setEditingDay(null);
   };
 
+  const openEditIncidencia = (inc: Incidencia) => {
+    setEditingIncId(inc.id);
+    setIncForm({ alumno: inc.alumno, tipo: inc.tipo, descripcion: inc.descripcion, gravedad: inc.gravedad });
+    setShowIncidencia(true);
+  };
+
   const addIncidenciaItem = () => {
     if (!incForm.alumno || !incForm.descripcion) { toast("Completa los campos", "error"); return; }
-    const newInc: Incidencia = {
-      id: `inc-${Date.now()}`,
-      alumno: incForm.alumno,
-      tipo: incForm.tipo,
-      descripcion: incForm.descripcion,
-      gravedad: incForm.gravedad,
-      notificada: false,
-      resuelta: false,
-      fecha: new Date().toISOString().split("T")[0],
-    };
-    addIncidencia(newInc);
-    toast("Incidencia registrada");
+    if (editingIncId) {
+      updateIncidencia(editingIncId, incForm);
+      toast("Incidencia actualizada");
+    } else {
+      const newInc: Incidencia = {
+        id: `inc-${Date.now()}`,
+        alumno: incForm.alumno,
+        tipo: incForm.tipo,
+        descripcion: incForm.descripcion,
+        gravedad: incForm.gravedad,
+        notificada: false,
+        resuelta: false,
+        fecha: new Date().toISOString().split("T")[0],
+      };
+      addIncidencia(newInc);
+      toast("Incidencia registrada");
+    }
     setShowIncidencia(false);
+    setEditingIncId(null);
     setIncForm({ alumno: "", tipo: "otro", descripcion: "", gravedad: "leve" });
   };
 
@@ -69,13 +121,20 @@ export function ComedorView() {
     <div className="space-y-8 animate-fadeIn">
       <PageHeader title="Comedor" description="Menú semanal editable y control de incidencias"
         actions={
-          <Button size="sm" onClick={() => setShowIncidencia(true)}><IconPlus width={14} height={14} /> Nueva incidencia</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={analizarAlergenos} disabled={alergenoLoading}>
+              <IconSparkles width={14} height={14} />
+              {alergenoLoading ? "Analizando..." : "Detectar alérgenos"}
+            </Button>
+            <Button size="sm" onClick={() => setShowIncidencia(true)}><IconPlus width={14} height={14} /> Nueva incidencia</Button>
+          </div>
         }
       />
 
-      <div className="grid md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         {DIAS.map((d, idx) => {
           const m = menu[d.key];
+          const alergias = getAlergenosForDay(d.key);
           const colores = ["bg-orange-50 text-orange-700 border-orange-200", "bg-blue-50 text-blue-700 border-blue-200", "bg-emerald-50 text-emerald-700 border-emerald-200", "bg-rose-50 text-rose-700 border-rose-200", "bg-purple-50 text-purple-700 border-purple-200"];
           return (
             <Card key={d.key} hover className="p-4 cursor-pointer" onClick={() => openEditDay(d.key)}>
@@ -85,6 +144,17 @@ export function ComedorView() {
                 <div><div className="text-[10px] font-bold uppercase tracking-wider text-ink-300">Segundo</div><div className="text-sm text-ink-700 mt-0.5">{m.segundo}</div></div>
                 <div><div className="text-[10px] font-bold uppercase tracking-wider text-ink-300">Postre</div><div className="text-sm text-ink-700 mt-0.5">{m.postre}</div></div>
               </div>
+              {alergias.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap gap-1">
+                    {alergias.map((al, i) => (
+                      <span key={i} className={`text-[8px] px-1.5 py-0.5 rounded-full font-medium ${ALERGENO_COLORS[al.alergenos[0]] || "bg-gray-100 text-ink-500"}`}>
+                        {al.alergenos[0]} · {al.plato}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-3 pt-2 border-t border-gray-100 text-[10px] text-ink-400 text-center">Click para editar</div>
             </Card>
           );
@@ -149,7 +219,7 @@ export function ComedorView() {
             {incidencias.slice(-8).reverse().map(i => {
               const perfil = alumnos.find(p => p.nombre === i.alumno);
               return (
-              <div key={i.id} className={`flex items-start gap-2 p-2 rounded-lg text-xs border ${i.resuelta ? "bg-gray-50 border-gray-100" : i.gravedad === "grave" ? "bg-red-50 border-red-100" : i.gravedad === "moderada" ? "bg-amber-50 border-amber-100" : "bg-white border-gray-200"}`}>
+              <div key={i.id} onClick={() => openEditIncidencia(i)} className={`cursor-pointer flex items-start gap-2 p-2 rounded-lg text-xs border ${i.resuelta ? "bg-gray-50 border-gray-100" : i.gravedad === "grave" ? "bg-red-50 border-red-100" : i.gravedad === "moderada" ? "bg-amber-50 border-amber-100" : "bg-white border-gray-200"}`}>
                 <span className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${i.gravedad === "grave" ? "bg-red-500" : i.gravedad === "moderada" ? "bg-amber-500" : "bg-blue-500"}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -193,9 +263,12 @@ export function ComedorView() {
         </div>
       </Modal>
 
-      <Modal open={showIncidencia} onClose={() => setShowIncidencia(false)} title="Registrar incidencia">
+      <Modal open={showIncidencia} onClose={() => { setShowIncidencia(false); setEditingIncId(null); }} title={editingIncId ? "Editar incidencia" : "Registrar incidencia"}>
         <div className="space-y-4">
-          <input className="input" placeholder="Nombre del alumno *" value={incForm.alumno} onChange={e => setIncForm(p => ({ ...p, alumno: e.target.value }))} />
+          <select className="select" value={incForm.alumno} onChange={e => setIncForm(p => ({ ...p, alumno: e.target.value }))}>
+            <option value="">Seleccionar alumno...</option>
+            {alumnos.filter(a => a.estado === "activo").map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+          </select>
           <select className="select" value={incForm.tipo} onChange={e => setIncForm(p => ({ ...p, tipo: e.target.value as Incidencia["tipo"] }))}>
             <option value="caida">Caída</option><option value="fiebre">Fiebre</option><option value="alergia">Alergia</option>
             <option value="conflicto">Conflicto</option><option value="otro">Otro</option>
@@ -205,8 +278,8 @@ export function ComedorView() {
             <option value="leve">Leve</option><option value="moderada">Moderada</option><option value="grave">Grave</option>
           </select>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowIncidencia(false)}>Cancelar</Button>
-            <Button size="sm" onClick={addIncidenciaItem}>Registrar</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowIncidencia(false); setEditingIncId(null); }}>Cancelar</Button>
+            <Button size="sm" onClick={addIncidenciaItem}>{editingIncId ? "Guardar cambios" : "Registrar"}</Button>
           </div>
         </div>
       </Modal>

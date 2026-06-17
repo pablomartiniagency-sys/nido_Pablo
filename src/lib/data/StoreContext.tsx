@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Tarea, CargoPendiente } from "@/types";
 import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad, EscuelaConfig } from "@/types/crm";
 import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS, CARGOS_PENDIENTES } from "./mock";
 import { ALUMNOS_PERFILES, ASISTENCIA, LEADS, OPORTUNIDADES } from "./crm-mock";
 import { clasificarGasto } from "@/lib/ai/simulated";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { createIdentityClient } from "@/lib/supabase-identity";
 export interface StoreData {
   familias: Familia[];
   facturas: Factura[];
@@ -43,8 +44,6 @@ export interface FinancialStatement {
   ratioGastosIngresos: number;
 }
 
-const OLD_STORE_KEY = "nido-demo-data";
-
 let idCounter = Date.now();
 export function genId(prefix = "id") { return `${prefix}-${++idCounter}`; }
 export function nextFacturaNum() { return `F-2026-${String(FACTURAS.length + GASTOS.length + 1).padStart(3, "0")}`; }
@@ -63,8 +62,11 @@ export interface DashboardMetrics {
   cargosVencidosCount: number;
 }
 
-interface StoreActions {
+export interface StoreActions {
   ready: boolean;
+  syncing: boolean;
+  loadError: string | null;
+  onboardingVersion: number;
   set: <K extends keyof StoreData>(key: K, value: StoreData[K]) => void;
   updateConfiguracion: (changes: Partial<EscuelaConfig>) => void;
   addFamilia: (f: Familia) => void;
@@ -107,6 +109,7 @@ interface StoreActions {
   addCargo: (c: CargoPendiente) => void;
   updateCargo: (id: string, changes: Partial<CargoPendiente>) => void;
   removeCargo: (id: string) => void;
+  replayOnboarding: () => void;
 }
 
 type StoreContextType = StoreData & StoreActions;
@@ -132,61 +135,85 @@ const DATA_DEMO: StoreData = {
   tareas: [], cargosPendientes: CARGOS_PENDIENTES,
 };
 
-function loadFromStorage(key: string): { data: StoreData | null; defaults: StoreData } {
-  if (typeof window === "undefined") return { data: null, defaults: DATA_VACIO };
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return { data: JSON.parse(raw), defaults: DATA_VACIO };
-  } catch { }
-  return { data: null, defaults: DATA_VACIO };
-}
-
-function saveToStorage(key: string, data: StoreData) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch { }
-}
-
-function migrateOldKey(userId: string) {
-  if (typeof window === "undefined") return;
-  const newKey = `nido-${userId}`;
-  try {
-    const oldRaw = localStorage.getItem(OLD_STORE_KEY);
-    if (oldRaw) {
-      if (!localStorage.getItem(newKey)) {
-        localStorage.setItem(newKey, oldRaw);
-      }
-      localStorage.removeItem(OLD_STORE_KEY);
-    }
-  } catch { }
+async function getAccessToken(): Promise<string | null> {
+  const identity = createIdentityClient();
+  if (!identity) return null;
+  const { data: { session } } = await identity.auth.getSession();
+  return session?.access_token || null;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const user = typeof window !== "undefined" ? auth.user : null;
-  const isDemo = user?.role === "demo";
-  const storeKey = user ? `nido-${user.id}` : `nido-anon`;
-  const [data, setData] = useState<StoreData>(isDemo ? DATA_DEMO : DATA_VACIO);
+  const [data, setData] = useState<StoreData>(DATA_VACIO);
   const [ready, setReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [onboardingVersion, setOnboardingVersion] = useState(0);
+
+  const isEmptyOrDemo = (d: StoreData) => {
+    return d.familias.length === 0 && d.facturas.length === 0 && d.gastos.length === 0;
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") { setReady(true); return; }
     if (!user) { setReady(true); return; }
-    migrateOldKey(user.id);
-    try {
-      const { data: stored, defaults } = loadFromStorage(storeKey);
-      const base = isDemo ? DATA_DEMO : defaults;
-      if (stored) {
-        setData({ ...base, ...stored, alumnos: stored.alumnos || base.alumnos, asistencia: stored.asistencia || base.asistencia, leads: stored.leads || base.leads, oportunidades: stored.oportunidades || base.oportunidades });
-      } else {
-        setData(base);
-      }
-    } catch { }
-    setReady(true);
-  }, [user, storeKey, isDemo]);
 
+    const loadData = async () => {
+      const token = await getAccessToken();
+      if (token) {
+        try {
+          const res = await fetch(`/api/data/sync`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const remote: StoreData = await res.json();
+            if (isEmptyOrDemo(remote)) {
+              setData(DATA_DEMO);
+              setLoadError("Mostrando datos de demostración. Añade tus propios datos desde el panel.");
+            } else {
+              setData(remote);
+            }
+            setReady(true);
+            return;
+          }
+        } catch {
+          setLoadError("Error de conexión. Mostrando datos de demostración.");
+        }
+      }
+
+      setData(DATA_DEMO);
+      setReady(true);
+    };
+
+    loadData();
+  }, [user]);
+
+  // Debounced sync to Supabase on data change
   useEffect(() => {
-    if (ready && user) saveToStorage(storeKey, data);
-  }, [data, ready, storeKey, user]);
+    if (!ready || !user) return;
+
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(async () => {
+      const token = await getAccessToken();
+      if (!token) return;
+      setSyncing(true);
+      try {
+        await fetch(`/api/data/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
+      } catch { /* silent — next sync will retry */ }
+      setSyncing(false);
+    }, 2000);
+
+    return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
+  }, [data, ready, user]);
 
   const set = useCallback(<K extends keyof StoreData>(key: K, value: StoreData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
@@ -342,6 +369,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addTarea, updateTarea, removeTarea,
     addCargo, updateCargo, removeCargo,
     generarNominasMes, generarAsientosContables, clasificarGasto,
+    replayOnboarding: () => {
+      if (typeof window !== "undefined") {
+        const key = `nido-onboarding-${user?.id || "anon"}`;
+        localStorage.removeItem(key);
+      }
+      setOnboardingVersion(v => v + 1);
+    },
+    syncing, loadError, onboardingVersion,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

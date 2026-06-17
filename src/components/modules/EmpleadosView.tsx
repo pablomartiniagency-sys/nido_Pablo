@@ -13,7 +13,7 @@ import { IconPlus, IconTrash } from "@/components/ui/Icons";
 import type { Empleado } from "@/types";
 
 export function EmpleadosView() {
-  const { empleados, incidencias, addEmpleado, updateEmpleado, removeEmpleado } = useStore();
+  const { empleados, addEmpleado, updateEmpleado, removeEmpleado } = useStore();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function EmpleadosView() {
         <Card className="p-4"><div className="label mb-1">Plantilla activa</div><div className="text-xl font-bold text-ink-900">{activos.length}</div></Card>
         <Card className="p-4"><div className="label mb-1">Coste bruto mensual</div><div className="text-xl font-bold text-ink-900">{eur(costeTotal)}</div></Card>
         <Card className="p-4"><div className="label mb-1">Coste SS empresa</div><div className="text-xl font-bold text-ink-900">{eur(costeTotal * 0.296)}</div></Card>
-        <Card className="p-4"><div className="label mb-1">Incidencias abiertas</div><div className="text-xl font-bold text-amber-400">{incidencias.filter(i => !i.resuelta).length}</div></Card>
+        <Card className="p-4"><div className="label mb-1">Total empleados</div><div className="text-xl font-bold text-ink-900">{empleados.length}</div></Card>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -82,29 +82,6 @@ export function EmpleadosView() {
           </Card>
         ))}
       </div>
-
-      <Card>
-        <CardHeader><CardTitle>Incidencias activas</CardTitle></CardHeader>
-        <div className="space-y-3">
-          {incidencias.filter(i => !i.resuelta).length === 0 ? (
-            <p className="text-sm text-ink-500">No hay incidencias activas</p>
-          ) : (
-            incidencias.filter(i => !i.resuelta).map(i => (
-              <div key={i.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200/60">
-                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${i.gravedad === "grave" ? "bg-red-400" : i.gravedad === "moderada" ? "bg-amber-400" : "bg-blue-400"}`} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-ink-900">{i.alumno}</span>
-                    <Badge variant={i.gravedad === "grave" ? "danger" : i.gravedad === "moderada" ? "warning" : "info"}>{i.gravedad}</Badge>
-                    <span className="text-[10px] text-ink-400">{i.fecha}</span>
-                  </div>
-                  <p className="text-xs text-ink-500 mt-0.5">{i.descripcion}</p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Editar empleado" : "Nuevo empleado"}>
         <div className="space-y-4">

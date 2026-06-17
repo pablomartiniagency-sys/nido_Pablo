@@ -187,21 +187,23 @@ export function FacturacionView() {
       <PageHeader title="Facturación" description="Gestión de cobros, facturas y remesas SEPA"
         actions={
           <div className="flex gap-2">
-            <div className="flex gap-1 bg-gray-50 rounded-xl p-1">
+            <div className="flex flex-wrap gap-1 bg-gray-50 rounded-xl p-1">
               {([["resumen","Resumen por familia"],["facturas","Facturas"],["precios","Precios"]] as [TabView,string][]).map(([k, v]) => (
                 <button key={k} onClick={() => setTab(k)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${tab === k ? "bg-coral-50 text-coral-500 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>{v}</button>
               ))}
             </div>
-            <Button size="sm" onClick={() => openNewFactura()}><IconPlus width={14} height={14} /> Nueva factura</Button>
-            <Button variant="secondary" size="sm" onClick={handleGenerarSEPA}>
-              <IconDownload width={14} height={14} /> Remesa SEPA
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => openNewFactura()}><IconPlus width={14} height={14} /> Nueva factura</Button>
+              <Button variant="secondary" size="sm" onClick={handleGenerarSEPA}>
+                <IconDownload width={14} height={14} /> Remesa SEPA
+              </Button>
+            </div>
           </div>
         }
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-4"><div className="label mb-1">Cobrado</div><div className="text-xl font-bold text-emerald-600">{eur(totales.cobrado)}</div></Card>
         <Card className="p-4"><div className="label mb-1">Pendiente</div><div className="text-xl font-bold text-amber-600">{eur(totales.pendiente)}</div></Card>
         <Card className="p-4"><div className="label mb-1">En impago</div><div className="text-xl font-bold text-red-600">{eur(totales.impago)}</div></Card>
@@ -214,7 +216,7 @@ export function FacturacionView() {
               <CardTitle>Resumen de cobros por familia</CardTitle>
               <div className="relative max-w-xs">
                 <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-                <input className="input pl-10 w-full" placeholder="Buscar familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+                <input className="input !pl-10 w-full" placeholder="Buscar familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
               </div>
             </div>
           </CardHeader>
@@ -349,7 +351,7 @@ export function FacturacionView() {
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px]">
               <IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input className="input pl-10" placeholder="Buscar factura o familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              <input className="input !pl-10" placeholder="Buscar factura o familia..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
             </div>
             <div className="flex gap-1">
               {estados.map(e => (
@@ -415,7 +417,7 @@ export function FacturacionView() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Precios del catálogo de servicios</CardTitle>
-              <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
                 <Button variant="ghost" size="sm" onClick={handleResetPrecios}>Restaurar valores</Button>
                 <Button size="sm" onClick={handleGuardarPrecios}>Guardar precios</Button>
               </div>
@@ -515,7 +517,7 @@ export function FacturacionView() {
               <p className="text-xs text-ink-400 mt-1">Los servicios contratados por esta familia se han cargado automáticamente. Puedes ajustar importes o añadir/eliminar líneas.</p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-700">Período <span className="text-coral-500">*</span></label>
               <select className="select w-full" value={form.periodo} onChange={e => setForm(p => ({ ...p, periodo: e.target.value }))}>
@@ -545,8 +547,8 @@ export function FacturacionView() {
               <button onClick={addItemForm} className="text-xs text-coral-500 hover:text-coral-500">+ Añadir línea</button>
             </div>
             {form.items.map((item, i) => (
-              <div key={i} className="flex gap-2 items-end">
-                <div className="flex-1 space-y-1">
+              <div key={i} className="flex gap-2 items-end flex-wrap sm:flex-nowrap">
+                <div className="flex-1 min-w-[200px] space-y-1">
                   <label className="text-xs text-ink-500">Concepto</label>
                   <input className="input w-full" placeholder="Ej: Mensualidad, Comedor, Talleres..." value={item.concepto} onChange={e => updateItemForm(i, "concepto", e.target.value)} />
                 </div>

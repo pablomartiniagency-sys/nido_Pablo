@@ -181,7 +181,7 @@ function buildSystemPrompt(data: ChatRequest["data"]): string {
   const totalEmp = data.empleados.length; const totalAlu = data.alumnos.length; const totalLea = data.leads.length; const totalInc = data.incidencias.length;
   const cobradoTotal = data.facturas.filter((f: any) => f.estado === "pagada").reduce((s: number, f: any) => s + (f.total || 0), 0);
   const pendienteTotal = data.facturas.filter((f: any) => f.estado === "enviada" || f.estado === "impago").reduce((s: number, f: any) => s + (f.total || 0), 0);
-  return `Eres Nido, el asistente IA de una secretaría digital para escuelas infantiles (0-3 años). Respondes preguntas sobre los datos de la escuela en español, con tono cercano y profesional.
+  return `Eres Nido, el asistente IA para escuelas infantiles (0-3 años). Respondes preguntas sobre los datos de la escuela en español, con tono cercano y profesional.
 
 DATOS ACTUALES DE LA ESCUELA:
 - ${totalFam} familias registradas

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconX } from "@/components/ui/Icons";
+import { IconX, IconSearch } from "@/components/ui/Icons";
 
 const FAGS = [
   { q: "¿Cómo añadir una familia?", r: "Ve a Familias → Añadir familia. Rellena nombre, email, IBAN y servicios contratados." },
@@ -10,7 +10,7 @@ const FAGS = [
   { q: "¿Cómo funciona el Asistente IA?", r: "Escribe preguntas en lenguaje natural como \"¿Cuántos morosos hay?\" o \"¿Cuál fue el gasto total este mes?\"." },
   { q: "¿Qué es Séneca?", r: "Es el sistema de la Junta de Andalucía. Actívalo en Configuración → Datos del centro seleccionando Andalucía, y genera informes de evaluación." },
   { q: "¿Cómo crear usuarios secundarios?", r: "Solo el propietario puede hacerlo en Configuración → Usuarios secundarios → Añadir. Útil para educadores o personal administrativo." },
-  { q: "¿Los datos se guardan al cerrar sesión?", r: "Sí, los datos se guardan automáticamente en tu navegador (localStorage). Si usas demo, se pierden al cerrar." },
+  { q: "¿Los datos se guardan al cerrar sesión?", r: "Sí, los datos se guardan automáticamente en la nube. Son accesibles desde cualquier dispositivo." },
   { q: "¿Cómo configurar el envío de emails?", r: "En Configuración → Email (SMTP), prueba la conexión. Los recordatorios de pago se envían automáticamente." },
 ];
 
@@ -31,7 +31,7 @@ export function HelpPanel() {
               <h2 className="text-lg font-bold text-white">Ayuda rápida</h2>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white"><IconX width={16} height={16} /></button>
             </div>
-            <input className="input mb-4" placeholder="Buscar ayuda..." value={busqueda} onChange={e => setBusqueda(e.target.value)} autoFocus />
+            <div className="relative mb-4"><IconSearch width={14} height={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" /><input className="input !pl-10 w-full" placeholder="Buscar ayuda..." value={busqueda} onChange={e => setBusqueda(e.target.value)} autoFocus /></div>
             <div className="overflow-y-auto flex-1 space-y-2 custom-scrollbar">
               {filtrados.map((f, i) => (
                 <details key={i} className="group">
