@@ -11,10 +11,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { IconPlus, IconCamera, IconRefresh, IconSearch, IconTrash, IconUpload, IconFile, IconX, IconEdit, IconDownload } from "@/components/ui/Icons";
+import { useRouter } from "next/navigation";
 import { generateModelo303, generateModelo390, generateInformeGestoria } from "@/lib/reports";
 import type { Gasto, CategoriaGasto, Recurrencia } from "@/types";
 
 type AsientoManual = { id: string; fecha: string; concepto: string; importe: number; tipo: "ingreso" | "gasto"; categoria: string };
+
 
 type TabView = "gastos" | "balance" | "asientos" | "informes";
 
@@ -23,6 +25,7 @@ const MESES_CORTO = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","A
 export function ContabilidadView() {
   const { gastos, facturas, familias, addGasto, updateGasto, removeGasto, financialStatement, generarAsientosContables, clasificarGasto } = useStore();
   const { toast } = useToast();
+  const router = useRouter();
   const [tab, setTab] = useState<TabView>("gastos");
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaGasto | "todas">("todas");
@@ -48,6 +51,8 @@ export function ContabilidadView() {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir(key === "fecha" ? "desc" : "desc"); }
   };
+
+  const esNomina = (g: Gasto) => g.id.startsWith("nomina-");
 
   const filtrados = useMemo(() => {
     return gastos.filter(g => {
@@ -339,10 +344,17 @@ export function ContabilidadView() {
                 </thead>
                 <tbody>
                   {filtrados.map(g => (
-                    <tr key={g.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={g.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${esNomina(g) ? "bg-lapis-50/30" : ""}`}>
                       <td className="py-3 px-3 text-ink-600 text-xs">{fechaCorta(g.fecha)}</td>
-                      <td className="py-3 px-3 text-ink-900 font-medium">{g.proveedor}</td>
-                      <td className="py-3 px-3 text-ink-700 max-w-[200px] truncate">{g.concepto}</td>
+                      <td className="py-3 px-3 text-ink-900 font-medium">
+                        {esNomina(g) ? (
+                          <a href="/nominas" className="hover:text-lapis-600 underline decoration-dotted underline-offset-2">{g.proveedor}</a>
+                        ) : g.proveedor}
+                      </td>
+                      <td className="py-3 px-3 text-ink-700 max-w-[200px] truncate">
+                        {g.concepto}
+                        {esNomina(g) && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 text-[9px] font-medium bg-lapis-100 text-lapis-700 rounded-full">Nómina</span>}
+                      </td>
                       <td className="py-3 px-3">
                         <span className={`chip text-[10px] ${CATEGORIAS_GASTO.find(c => c.value === g.categoria)?.color ?? ""}`}>
                           {CATEGORIAS_GASTO.find(c => c.value === g.categoria)?.label ?? g.categoria}
@@ -353,10 +365,14 @@ export function ContabilidadView() {
                       <td className="py-3 px-3 text-left text-xs text-ink-400 max-w-[120px] truncate hidden md:table-cell">{g.archivoOriginal || "—"}</td>
                       <td className="py-3 px-3 text-center hidden md:table-cell">{g.ocr ? <span className="text-coral-500 text-xs">📷</span> : <span className="text-ink-400">—</span>}</td>
                       <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => handleEdit(g)} className="text-ink-400 hover:text-lapis-500 transition" title="Editar"><IconEdit width={14} height={14} /></button>
-                          <button onClick={() => handleDelete(g.id, g.proveedor)} className="text-ink-400 hover:text-red-600 transition" title="Eliminar"><IconTrash width={14} height={14} /></button>
-                        </div>
+                        {esNomina(g) ? (
+                          <a href="/nominas" className="text-xs text-lapis-500 hover:text-lapis-700 underline underline-offset-2">Ver</a>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => handleEdit(g)} className="text-ink-400 hover:text-lapis-500 transition" title="Editar"><IconEdit width={14} height={14} /></button>
+                            <button onClick={() => handleDelete(g.id, g.proveedor)} className="text-ink-400 hover:text-red-600 transition" title="Eliminar"><IconTrash width={14} height={14} /></button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

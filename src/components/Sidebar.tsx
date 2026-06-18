@@ -67,7 +67,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 shrink-0 border-r border-lapis-100 bg-lapis-50/80 backdrop-blur-xl py-6 px-4 hidden lg:flex flex-col sticky top-0 h-screen self-start">
       <div className="px-2 mb-8"><Logo /></div>
-      <nav className="flex-1 space-y-6">
+      <nav className="flex-1 space-y-6 overflow-y-auto min-h-0 custom-scrollbar pb-4">
         {SECCIONES.map(([key, label]) => (
           <div key={key}>
             <div className="label px-3 mb-2">{label}</div>

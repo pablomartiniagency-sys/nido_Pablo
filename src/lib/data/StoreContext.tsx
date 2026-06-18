@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
-import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Tarea, CargoPendiente } from "@/types";
+import type { Familia, Factura, Gasto, Empleado, Nomina, SuministroFactura, MenuSemanal, Incidencia, CategoriaGasto, Recurrencia, Tarea, CargoPendiente } from "@/types";
 import type { AlumnoPerfil, RegistroAsistencia, Lead, Oportunidad, EscuelaConfig } from "@/types/crm";
 import { FAMILIAS, FACTURAS, GASTOS, EMPLEADOS, NOMINAS, SUMINISTROS, MENU, INCIDENCIAS, CARGOS_PENDIENTES } from "./mock";
 import { ALUMNOS_PERFILES, ASISTENCIA, LEADS, OPORTUNIDADES } from "./crm-mock";
@@ -44,9 +44,31 @@ export interface FinancialStatement {
   ratioGastosIngresos: number;
 }
 
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
 let idCounter = Date.now();
 export function genId(prefix = "id") { return `${prefix}-${++idCounter}`; }
 export function nextFacturaNum() { return `F-2026-${String(FACTURAS.length + GASTOS.length + 1).padStart(3, "0")}`; }
+
+function periodoToFecha(periodo: string): string {
+  const [mes, año] = periodo.split(" ");
+  const mesNum = (MESES.indexOf(mes) + 1).toString().padStart(2, "0");
+  return `${año}-${mesNum}-01`;
+}
+
+function nominaToGasto(n: Nomina, empleados: Empleado[]): Gasto {
+  const emp = empleados.find(e => e.id === n.empleadoId);
+  return {
+    id: `nomina-${n.id}`,
+    fecha: periodoToFecha(n.periodo),
+    proveedor: emp?.nombre || "Empleado",
+    concepto: `Nómina — ${n.periodo}`,
+    importe: n.bruto + n.ssEmpresa,
+    iva: 0,
+    categoria: "personal" as CategoriaGasto,
+    recurrencia: "mensual" as Recurrencia,
+  };
+}
 
 function mesActual(): string {
   const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -386,14 +408,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     return { ...p, empleados: p.empleados.map(e => e.id === id ? { ...e, ...changes } : e), nominas };
   }), []);
-  const removeEmpleado = useCallback((id: string) => setData(p => ({
-    ...p,
-    empleados: p.empleados.filter(e => e.id !== id),
-    nominas: p.nominas.filter(n => n.empleadoId !== id),
-  })), []);
+  const removeEmpleado = useCallback((id: string) => setData(p => {
+    const nominaIds = p.nominas.filter(n => n.empleadoId === id).map(n => `nomina-${n.id}`);
+    return {
+      ...p,
+      empleados: p.empleados.filter(e => e.id !== id),
+      nominas: p.nominas.filter(n => n.empleadoId !== id),
+      gastos: p.gastos.filter(g => !nominaIds.includes(g.id)),
+    };
+  }), []);
 
-  const addNomina = useCallback((n: Nomina) => setData(p => ({ ...p, nominas: [...p.nominas, n] })), []);
-  const updateNomina = useCallback((id: string, changes: Partial<Nomina>) => setData(p => ({ ...p, nominas: p.nominas.map(n => n.id === id ? { ...n, ...changes } : n) })), []);
+  const addNomina = useCallback((n: Nomina) => setData(p => ({ ...p, nominas: [...p.nominas, n], gastos: [...p.gastos, nominaToGasto(n, p.empleados)] })), []);
+  const updateNomina = useCallback((id: string, changes: Partial<Nomina>) => setData(p => {
+    const nominas = p.nominas.map(n => n.id === id ? { ...n, ...changes } : n);
+    const nom = nominas.find(n => n.id === id);
+    const gastos = nom ? p.gastos.map(g => g.id === `nomina-${id}` ? nominaToGasto(nom, p.empleados) : g) : p.gastos;
+    return { ...p, nominas, gastos };
+  }), []);
   const addSuministro = useCallback((s: SuministroFactura) => setData(p => ({ ...p, suministros: [...p.suministros, s] })), []);
   const updateMenu = useCallback((menu: MenuSemanal) => setData(p => ({ ...p, menu })), []);
   const addIncidencia = useCallback((i: Incidencia) => setData(p => ({ ...p, incidencias: [...p.incidencias, i] })), []);
@@ -419,7 +450,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
       });
       const existentes = p.nominas.filter(n => n.periodo !== periodo);
-      return { ...p, nominas: [...existentes, ...nuevas] };
+      const nuevasNominas = [...existentes, ...nuevas];
+      const gastosSinNomina = p.gastos.filter(g => !g.id.startsWith("nomina-"));
+      const nuevosGastos = nuevasNominas.map(n => nominaToGasto(n, p.empleados));
+      return { ...p, nominas: nuevasNominas, gastos: [...gastosSinNomina, ...nuevosGastos] };
     });
   }, []);
 
@@ -470,11 +504,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const balanceMensual = meses.map(mes => {
       const ingresos = data.facturas.filter(f => f.periodo === mes).reduce((s, f) => s + f.total, 0);
+      const gastosNomina = data.nominas.filter(n => n.periodo === mes).reduce((s, n) => s + n.bruto + n.ssEmpresa, 0);
       const gastos = data.gastos.filter(g => {
         const [y, m] = g.fecha.split("-");
         const idx = parseInt(m) - 1;
         return mesesCorto[idx] === mes;
-      }).reduce((s, g) => s + g.importe, 0);
+      }).reduce((s, g) => s + g.importe, 0) + gastosNomina;
       return { mes, ingresos, gastos, resultado: ingresos - gastos };
     });
 
@@ -487,10 +522,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         familia: f.nombre,
         total: data.facturas.filter(fc => fc.familiaId === f.id).reduce((s, fc) => s + fc.total, 0),
       })).filter(f => f.total > 0).sort((a, b) => b.total - a.total),
-      gastosPorCategoria: data.gastos.reduce<any[]>((acc, g) => {
-        acc.push({ categoria: g.categoria, importe: g.importe, mes: g.fecha.slice(0, 7) });
-        return acc;
-      }, []),
+      gastosPorCategoria: [
+        ...data.gastos.reduce<any[]>((acc, g) => {
+          acc.push({ categoria: g.categoria, importe: g.importe, mes: g.fecha.slice(0, 7) });
+          return acc;
+        }, []),
+        ...data.nominas.map(n => ({ categoria: "personal" as const, importe: n.bruto + n.ssEmpresa, mes: n.periodo.split(" ").reverse().join("-").replace(" ", "-") })),
+      ],
       balanceMensual,
       morososTotal: data.facturas.filter(f => f.estado === "impago").reduce((s, f) => s + f.total, 0),
       pendienteCobro: data.facturas.filter(f => f.estado === "enviada").reduce((s, f) => s + f.total, 0),
@@ -502,6 +540,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const asientos: any[] = [];
     data.facturas.filter(f => f.estado === "pagada").forEach(f => asientos.push({ tipo: "ingreso", concepto: `Factura ${f.numero} - ${f.familia}`, importe: f.total, fecha: f.periodo, categoria: "cuotas" }));
     data.gastos.forEach(g => asientos.push({ tipo: "gasto", concepto: g.concepto, importe: g.importe, fecha: g.fecha, categoria: g.categoria }));
+    data.nominas.forEach(n => asientos.push({ tipo: "gasto", concepto: `Nómina — ${n.periodo}`, importe: n.bruto + n.ssEmpresa, fecha: `${n.periodo.split(" ")[1]}-${("0" + (["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].indexOf(n.periodo.split(" ")[0]) + 1)).slice(-2)}-01`, categoria: "personal" }));
     return asientos.sort((a, b) => a.fecha.localeCompare(b.fecha));
   }, [data]);
 
