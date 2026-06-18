@@ -52,12 +52,19 @@ function EditableBalanceRow({ label, value, field, editingField, editValue, isOv
   );
 }
 
-export function PrevisionesView() {
+function getCurrentPeriod(): string {
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const ahora = new Date();
+  return `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+}
+
+export function SaludFinancieraView() {
   const { facturas, gastos } = useStore();
   const router = useRouter();
   const { toast } = useToast();
 
-  const reporte = useMemo(() => generarReporteFinanciero(facturas, gastos, ""), [facturas, gastos]);
+  const [periodo, setPeriodo] = useState("");
+  const reporte = useMemo(() => generarReporteFinanciero(facturas, gastos, periodo), [facturas, gastos, periodo]);
   const ratios = useMemo(() => calcularRatios(reporte), [reporte]);
 
   const [balanceOverrides, setBalanceOverrides] = useState<Partial<Record<BalanceField, number>>>({});
@@ -66,6 +73,16 @@ export function PrevisionesView() {
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnalisis, setAiAnalisis] = useState<any>(null);
+
+  const currentPeriod = getCurrentPeriod();
+  const periodYears = useMemo(() => {
+    const years = new Set<string>();
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear - 2; y <= currentYear + 1; y++) years.add(String(y));
+    gastos.forEach(g => { if (g.fecha) years.add(g.fecha.slice(0, 4)); });
+    facturas.forEach(f => { if (f.periodo) { const m = f.periodo.match(/(\d{4})/); if (m) years.add(m[1]); } });
+    return Array.from(years).sort();
+  }, [gastos, facturas]);
 
   const analizarConIA = async () => {
     setAiLoading(true);
@@ -134,15 +151,24 @@ export function PrevisionesView() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <PageHeader title="Estados Financieros" description="Cuenta de resultados, balance, EBITDA y ratios financieros" />
+      <PageHeader title="Salud Financiera" description="Cuenta de resultados, balance, EBITDA y ratios financieros" />
 
-      <div className="flex gap-1 bg-gray-50 rounded-xl p-1 w-fit">
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition ${tab === t.key ? "bg-coral-50 text-coral-600 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-3">
+        <div className="flex gap-1 bg-gray-50 rounded-xl p-1 w-fit">
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition ${tab === t.key ? "bg-coral-50 text-coral-600 border border-coral-200" : "text-ink-500 hover:text-ink-900"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="label text-xs">Año:</span>
+          <select className="select w-auto text-xs py-1" value={periodo} onChange={e => setPeriodo(e.target.value)}>
+            <option value="">Todos</option>
+            {periodYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
       </div>
 
       {tab === "pyg" && (

@@ -1,10 +1,5 @@
-import { Providers } from "@/app/providers";
 import { DashboardShell } from "@/components/DashboardShell";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <Providers>
-      <DashboardShell>{children}</DashboardShell>
-    </Providers>
-  );
+  return <DashboardShell>{children}</DashboardShell>;
 }

@@ -3,10 +3,10 @@ import { getStripe, PLANS, type PlanId } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   try {
-    const { tenantId, tenantName, tenantEmail, planId, returnUrl } = await req.json();
+    const { userId, userEmail, planId, returnUrl } = await req.json();
 
-    if (!tenantId || !planId || !returnUrl) {
-      return NextResponse.json({ error: "tenantId, planId y returnUrl requeridos" }, { status: 400 });
+    if (!userId || !planId || !returnUrl) {
+      return NextResponse.json({ error: "userId, planId y returnUrl requeridos" }, { status: 400 });
     }
 
     const plan = PLANS[planId as PlanId];
@@ -18,10 +18,10 @@ export async function POST(req: Request) {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: plan.priceId, quantity: 1 }],
-      customer_email: tenantEmail,
-      metadata: { tenantId, planId },
+      customer_email: userEmail,
+      metadata: { userId, planId },
       subscription_data: {
-        metadata: { tenantId, planId },
+        metadata: { userId, planId },
       },
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?canceled=true`,

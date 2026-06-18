@@ -61,7 +61,7 @@ function parseCSV(texto: string): string[][] {
 }
 
 export default function ImportarView() {
-  const { familias, facturas, gastos, empleados, alumnos, leads, set } = useStore();
+  const { familias, facturas, gastos, empleados, alumnos, leads, set, addFamilia, addAlumno } = useStore();
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
   const [mapeo, setMapeo] = useState<Mapeo | null>(null);
@@ -165,9 +165,15 @@ export default function ImportarView() {
   const handleImportar = () => {
     if (!mapeo || mapeo.data.length === 0) return;
     const { entidad, data } = mapeo;
-    const actual = { familias, facturas, gastos, empleados, alumnos, leads };
-    const combinado = [...(actual[entidad] as any[]), ...data];
-    set(entidad, combinado as any);
+    if (entidad === "familias") {
+      (data as any[]).forEach(f => addFamilia(f as Familia));
+    } else if (entidad === "alumnos") {
+      (data as any[]).forEach(a => addAlumno(a as any));
+    } else {
+      const actual = { facturas, gastos, empleados, alumnos, leads } as any;
+      const combinado = [...(actual[entidad] as any[]), ...data];
+      set(entidad, combinado as any);
+    }
     setImportado(true);
     toast(`${data.length} registros importados a ${PLANTILLAS[entidad].label}`);
   };

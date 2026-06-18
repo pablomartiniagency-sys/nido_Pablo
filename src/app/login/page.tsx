@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { createIdentityClient } from "@/lib/supabase-identity";
 import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const { user, loading, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,18 +20,17 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [recoverySuccess, setRecoverySuccess] = useState(false);
 
+  // On mount, check for recovery hash from Supabase password reset email
   useEffect(() => {
-    const init = async () => {
-      const identity = createIdentityClient();
-      if (!identity) { setChecking(false); return; }
-
-      // Check for recovery hash (from password reset email)
-      if (window.location.hash) {
-        const hash = new URLSearchParams(window.location.hash.replace("#", ""));
-        if (hash.get("type") === "recovery") {
-          const accessToken = hash.get("access_token");
-          const refreshToken = hash.get("refresh_token");
-          if (accessToken && refreshToken) {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = new URLSearchParams(window.location.hash.replace("#", ""));
+      if (hash.get("type") === "recovery") {
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        if (accessToken && refreshToken) {
+          (async () => {
+            const identity = createIdentityClient();
+            if (!identity) return;
             const { error } = await identity.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -38,26 +38,14 @@ export default function LoginPage() {
             if (!error) {
               window.location.hash = "";
               setRecoveryMode(true);
-              setChecking(false);
-              return;
             }
-          }
+          })();
         }
       }
+    }
+  }, []);
 
-      // Check existing session
-      const { data: { session } } = await identity.auth.getSession();
-      if (session?.user) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      setChecking(false);
-    };
-    init();
-  }, [router]);
-
-  if (checking) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-ink-400 text-sm animate-pulse p-6">
         Cargando...
@@ -65,23 +53,22 @@ export default function LoginPage() {
     );
   }
 
+  if (user) {
+    router.replace("/dashboard");
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!email || !password) { setError("Completa todos los campos"); return; }
     setSubmitting(true);
-    const identity = createIdentityClient();
-    if (!identity) { setError("Error de configuración de autenticación"); setSubmitting(false); return; }
-    const { data, error: signInError } = await identity.auth.signInWithPassword({ email, password });
+    const result = await login(email, password);
     setSubmitting(false);
-    if (signInError) {
-      setError(signInError.message === "Invalid login credentials"
-        ? "Email o contraseña incorrectos"
-        : "Error de autenticación: " + signInError.message);
-    } else if (data.user) {
+    if (result.success) {
       router.replace("/dashboard");
     } else {
-      setError("Email o contraseña incorrectos");
+      setError(result.error || "Credenciales incorrectas");
     }
   };
 
@@ -91,7 +78,6 @@ export default function LoginPage() {
     if (!email) { setError("Introduce tu email"); return; }
     setResetSubmitting(true);
     try {
-      const { createIdentityClient } = await import("@/lib/supabase-identity");
       const identity = createIdentityClient();
       if (!identity) { setError("Error de configuración de autenticación"); setResetSubmitting(false); return; }
       const { error } = await identity.auth.resetPasswordForEmail(email, {

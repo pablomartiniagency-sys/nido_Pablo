@@ -12,7 +12,7 @@ const FEATURES = [
   { icon: <IconAccounting width={20} height={20} />, title: "Contabilidad", desc: "OCR de facturas, clasificación automática y libro de gastos." },
   { icon: <IconInvoice width={20} height={20} />, title: "Facturación SEPA", desc: "Generación de remesas ISO 20022 pain.008.001.02." },
   { icon: <IconChat width={20} height={20} />, title: "Asistente IA", desc: "Consulta tus datos en lenguaje natural." },
-  { icon: <IconBolt width={20} height={20} />, title: "Previsiones", desc: "Proyección de tesorería 3M con regresión lineal." },
+  { icon: <IconBolt width={20} height={20} />, title: "Salud Financiera", desc: "Balance, EBITDA, ratios y proyección de tesorería." },
   { icon: <IconBowl width={20} height={20} />, title: "Seguimiento de clientes", desc: "CRM comercial con pipeline de leads y oportunidades." },
   { icon: <IconUsers width={20} height={20} />, title: "Empleados", desc: "Plantilla, ratios, incidencias y nóminas." },
 ];

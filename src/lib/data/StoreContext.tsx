@@ -48,6 +48,31 @@ let idCounter = Date.now();
 export function genId(prefix = "id") { return `${prefix}-${++idCounter}`; }
 export function nextFacturaNum() { return `F-2026-${String(FACTURAS.length + GASTOS.length + 1).padStart(3, "0")}`; }
 
+function mesActual(): string {
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const ahora = new Date();
+  return `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+}
+
+function calcularNomina(empleado: Empleado, periodo: string): Nomina {
+  const bruto = empleado.salarioBrutoMensual;
+  const irpf = bruto * (bruto > 2000 ? 0.18 : bruto > 1500 ? 0.15 : 0.10);
+  const ssEmpleado = bruto * 0.0635;
+  const ssEmpresa = bruto * 0.296;
+  const neto = bruto - irpf - ssEmpleado;
+  return {
+    id: genId("nom"),
+    empleadoId: empleado.id,
+    periodo,
+    bruto: Math.round(bruto * 100) / 100,
+    irpf: Math.round(irpf * 100) / 100,
+    ssEmpleado: Math.round(ssEmpleado * 100) / 100,
+    ssEmpresa: Math.round(ssEmpresa * 100) / 100,
+    neto: Math.round(neto * 100) / 100,
+    pagada: false,
+  };
+}
+
 export interface DashboardMetrics {
   familiasCount: number;
   totalAlumnos: number;
@@ -219,9 +244,110 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const addFamilia = useCallback((f: Familia) => setData(p => ({ ...p, familias: [...p.familias, f] })), []);
-  const updateFamilia = useCallback((id: string, changes: Partial<Familia>) => setData(p => ({ ...p, familias: p.familias.map(f => f.id === id ? { ...f, ...changes } : f) })), []);
-  const removeFamilia = useCallback((id: string) => setData(p => ({ ...p, familias: p.familias.filter(f => f.id !== id) })), []);
+  // Parse a familia.alumnos name string like "Martina (3a)" → { nombre, curso }
+  const parseAlumnoStr = (s: string) => {
+    const m = s.match(/^(.+?)\s*\((\d+\s*año[s]?)\)$/);
+    return m ? { nombre: m[1].trim(), curso: m[2] } : { nombre: s, curso: "" };
+  };
+
+  const addFamilia = useCallback((f: Familia) => setData(p => {
+    const nuevos: AlumnoPerfil[] = f.alumnos.map((nameStr, i) => {
+      const { nombre, curso } = parseAlumnoStr(nameStr);
+      return {
+        id: genId("al"), familiaId: f.id, nombre,
+        fechaNac: "", edad: "", curso,
+        fechaIngreso: new Date().toISOString().slice(0, 10), estado: "activo",
+        alergias: [], vacunas: [], contactosEmergencia: [], autorizadosRecogida: [],
+        documentos: [], autorizacionImagen: false,
+      };
+    });
+    return { ...p, familias: [...p.familias, f], alumnos: [...p.alumnos, ...nuevos] };
+  }), []);
+  const updateFamilia = useCallback((id: string, changes: Partial<Familia>) => setData(p => {
+    if (!changes.alumnos) {
+      return { ...p, familias: p.familias.map(f => f.id === id ? { ...f, ...changes } : f) };
+    }
+    const old = p.familias.find(f => f.id === id);
+    if (!old) return p;
+    const newNames = changes.alumnos;
+    const existing = p.alumnos.filter(a => a.familiaId === id);
+    // Keep existing AlumnoPerfil whose nombre matches a new name, remove orphans
+    const kept: AlumnoPerfil[] = [];
+    const created: AlumnoPerfil[] = [];
+    for (const nameStr of newNames) {
+      const { nombre, curso } = parseAlumnoStr(nameStr);
+      const match = existing.find(a => a.nombre === nombre);
+      if (match) { kept.push(match); }
+      else {
+        created.push({
+          id: genId("al"), familiaId: id, nombre,
+          fechaNac: "", edad: "", curso,
+          fechaIngreso: new Date().toISOString().slice(0, 10), estado: "activo",
+          alergias: [], vacunas: [], contactosEmergencia: [], autorizadosRecogida: [],
+          documentos: [], autorizacionImagen: false,
+        });
+      }
+    }
+    return {
+      ...p,
+      familias: p.familias.map(f => f.id === id ? { ...old, ...changes, alumnos: newNames } : f),
+      alumnos: [...p.alumnos.filter(a => a.familiaId !== id), ...kept, ...created],
+    };
+  }), []);
+  const removeFamilia = useCallback((id: string) => setData(p => ({
+    ...p,
+    familias: p.familias.filter(f => f.id !== id),
+    alumnos: p.alumnos.filter(a => a.familiaId !== id),
+  })), []);
+
+  const addAlumno = useCallback((a: AlumnoPerfil) => setData(p => {
+    const nombreStr = a.curso ? `${a.nombre} (${a.curso})` : a.nombre;
+    return {
+      ...p,
+      alumnos: [...p.alumnos, a],
+      familias: p.familias.map(f => f.id === a.familiaId
+        ? { ...f, alumnos: f.alumnos.includes(nombreStr) ? f.alumnos : [...f.alumnos, nombreStr] }
+        : f),
+    };
+  }), []);
+  const updateAlumno = useCallback((id: string, changes: Partial<AlumnoPerfil>) => setData(p => {
+    const old = p.alumnos.find(a => a.id === id);
+    if (!old) return p;
+    const updated = { ...old, ...changes };
+    let familias = p.familias;
+    // Remove old name from old family
+    if ((changes.nombre || changes.curso || changes.familiaId) && old.familiaId) {
+      const oldNameStr = old.curso ? `${old.nombre} (${old.curso})` : old.nombre;
+      familias = familias.map(f => f.id === old.familiaId
+        ? { ...f, alumnos: f.alumnos.filter(n => n !== oldNameStr) }
+        : f);
+    }
+    // Add new name to (possibly new) family
+    if (changes.nombre || changes.curso) {
+      const famId = changes.familiaId || old.familiaId;
+      const newNameStr = (changes.curso || old.curso)
+        ? `${changes.nombre || old.nombre} (${changes.curso || old.curso})`
+        : changes.nombre || old.nombre;
+      if (famId) {
+        familias = familias.map(f => f.id === famId && !f.alumnos.includes(newNameStr)
+          ? { ...f, alumnos: [...f.alumnos, newNameStr] }
+          : f);
+      }
+    }
+    return { ...p, alumnos: p.alumnos.map(a => a.id === id ? updated : a), familias };
+  }), []);
+  const removeAlumno = useCallback((id: string) => setData(p => {
+    const old = p.alumnos.find(a => a.id === id);
+    if (!old) return { ...p, alumnos: p.alumnos.filter(a => a.id !== id) };
+    const nameStr = old.curso ? `${old.nombre} (${old.curso})` : old.nombre;
+    return {
+      ...p,
+      alumnos: p.alumnos.filter(a => a.id !== id),
+      familias: p.familias.map(f => f.id === old.familiaId
+        ? { ...f, alumnos: f.alumnos.filter(n => n !== nameStr) }
+        : f),
+    };
+  }), []);
 
   const addFactura = useCallback((f: Factura) => setData(p => ({ ...p, facturas: [...p.facturas, f] })), []);
   const updateFactura = useCallback((id: string, changes: Partial<Factura>) => setData(p => ({ ...p, facturas: p.facturas.map(f => f.id === id ? { ...f, ...changes } : f) })), []);
@@ -231,9 +357,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateGasto = useCallback((id: string, changes: Partial<Gasto>) => setData(p => ({ ...p, gastos: p.gastos.map(g => g.id === id ? { ...g, ...changes } : g) })), []);
   const removeGasto = useCallback((id: string) => setData(p => ({ ...p, gastos: p.gastos.filter(g => g.id !== id) })), []);
 
-  const addEmpleado = useCallback((e: Empleado) => setData(p => ({ ...p, empleados: [...p.empleados, e] })), []);
-  const updateEmpleado = useCallback((id: string, changes: Partial<Empleado>) => setData(p => ({ ...p, empleados: p.empleados.map(e => e.id === id ? { ...e, ...changes } : e) })), []);
-  const removeEmpleado = useCallback((id: string) => setData(p => ({ ...p, empleados: p.empleados.filter(e => e.id !== id) })), []);
+  const addEmpleado = useCallback((e: Empleado) => setData(p => {
+    const periodo = mesActual();
+    const nomina = calcularNomina(e, periodo);
+    return { ...p, empleados: [...p.empleados, e], nominas: [...p.nominas, nomina] };
+  }), []);
+  const updateEmpleado = useCallback((id: string, changes: Partial<Empleado>) => setData(p => {
+    let nominas = p.nominas;
+    if (changes.salarioBrutoMensual !== undefined) {
+      const periodo = mesActual();
+      const bruto = changes.salarioBrutoMensual;
+      const irpf = bruto * (bruto > 2000 ? 0.18 : bruto > 1500 ? 0.15 : 0.10);
+      const ssEmpleado = bruto * 0.0635;
+      const ssEmpresa = bruto * 0.296;
+      const neto = bruto - irpf - ssEmpleado;
+      const existing = p.nominas.find(n => n.empleadoId === id && n.periodo === periodo);
+      if (existing) {
+        nominas = p.nominas.map(n => n.empleadoId === id && n.periodo === periodo
+          ? { ...n, bruto: Math.round(bruto * 100) / 100, irpf: Math.round(irpf * 100) / 100, ssEmpleado: Math.round(ssEmpleado * 100) / 100, ssEmpresa: Math.round(ssEmpresa * 100) / 100, neto: Math.round(neto * 100) / 100 }
+          : n);
+      } else {
+        const oldEmp = p.empleados.find(e => e.id === id);
+        if (oldEmp) {
+          const updatedEmp = { ...oldEmp, ...changes };
+          nominas = [...p.nominas, calcularNomina(updatedEmp, periodo)];
+        }
+      }
+    }
+    return { ...p, empleados: p.empleados.map(e => e.id === id ? { ...e, ...changes } : e), nominas };
+  }), []);
+  const removeEmpleado = useCallback((id: string) => setData(p => ({
+    ...p,
+    empleados: p.empleados.filter(e => e.id !== id),
+    nominas: p.nominas.filter(n => n.empleadoId !== id),
+  })), []);
 
   const addNomina = useCallback((n: Nomina) => setData(p => ({ ...p, nominas: [...p.nominas, n] })), []);
   const updateNomina = useCallback((id: string, changes: Partial<Nomina>) => setData(p => ({ ...p, nominas: p.nominas.map(n => n.id === id ? { ...n, ...changes } : n) })), []);
@@ -266,9 +423,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addAlumno = useCallback((a: AlumnoPerfil) => setData(p => ({ ...p, alumnos: [...p.alumnos, a] })), []);
-  const updateAlumno = useCallback((id: string, changes: Partial<AlumnoPerfil>) => setData(p => ({ ...p, alumnos: p.alumnos.map(a => a.id === id ? { ...a, ...changes } : a) })), []);
-  const removeAlumno = useCallback((id: string) => setData(p => ({ ...p, alumnos: p.alumnos.filter(a => a.id !== id) })), []);
   const addAsistencia = useCallback((r: RegistroAsistencia) => setData(p => ({ ...p, asistencia: [...p.asistencia, r] })), []);
   const updateAsistencia = useCallback((id: string, changes: Partial<RegistroAsistencia>) => setData(p => ({ ...p, asistencia: p.asistencia.map(r => r.id === id ? { ...r, ...changes } : r) })), []);
   const addLead = useCallback((l: Lead) => setData(p => ({ ...p, leads: [...p.leads, l] })), []);

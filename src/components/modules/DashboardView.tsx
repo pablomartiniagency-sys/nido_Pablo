@@ -231,7 +231,7 @@ export function DashboardView() {
           <Button variant="secondary" size="sm" onClick={() => router.push("/facturacion")}>Generar remesa SEPA</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/familias")}>Gestionar cargos</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/asistente")}>Preguntar al agente IA</Button>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/previsiones")}>Ver balance financiero</Button>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/salud-financiera")}>Ver salud financiera</Button>
         </div>
       </Card>
     </div>

@@ -247,6 +247,7 @@ export default function OportunidadesView() {
                 telefono: fd.get("telefono") as string,
                 nombreHijo: (fd.get("nombreHijo") as string) || undefined,
                 edadHijo: (fd.get("edadHijo") as string) || undefined,
+                fechaVisita: (fd.get("fechaVisita") as string) || undefined,
                 fuente: fd.get("fuente") as FuenteLead,
               };
               if (editingLead) {
@@ -305,6 +306,11 @@ export default function OportunidadesView() {
                       <option value="3 años">3 años</option>
                     </select>
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-ink-700">Fecha de visita</label>
+                  <input name="fechaVisita" type="date" defaultValue={editingLead?.fechaVisita || ""}
+                    className="w-full input" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">

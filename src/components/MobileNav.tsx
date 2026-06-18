@@ -33,7 +33,7 @@ const DRAWER_ITEMS = [
   ]},
   { section: "GESTIÓN IA", items: [
     { href: "/asistente",      label: "Asistente IA", icon: <IconChat width={18} height={18} /> },
-    { href: "/previsiones",    label: "Previsiones",  icon: <IconForecast width={18} height={18} /> },
+    { href: "/salud-financiera",    label: "Salud Financiera",  icon: <IconForecast width={18} height={18} /> },
     { href: "/suministros",    label: "Suministros",  icon: <IconBolt width={18} height={18} /> },
     { href: "/comedor",        label: "Comedor",      icon: <IconBowl width={18} height={18} /> },
     { href: "/empleados",      label: "Empleados",    icon: <IconUsers width={18} height={18} /> },

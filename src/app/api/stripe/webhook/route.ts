@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { getStripe, getPlanByPriceId } from "@/lib/stripe";
 import { getIdentityAdminClient } from "@/lib/supabase-identity-admin";
 
+async function storeSubscriptionInUserMetadata(admin: any, userId: string, data: Record<string, any>) {
+  try {
+    await admin.auth.admin.updateUserById(userId, { app_metadata: data });
+  } catch (err) {
+    console.error("[Stripe Webhook] Error updating user metadata:", err);
+  }
+}
+
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -26,27 +34,39 @@ export async function POST(req: Request) {
   }
 
   const db = admin!;
-  async function updateTenant(tenantId: string, data: Record<string, unknown>) {
-    await (db.from("identity_tenants") as any).update(data).eq("id", tenantId);
-  }
 
   try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        const tenantId = session.metadata?.tenantId;
+        const userId = session.metadata?.userId;
         const planId = session.metadata?.planId;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
 
-        if (tenantId && customerId) {
-          await updateTenant(tenantId, {
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
-            subscription_status: "active",
-            plan: planId || null,
-            updated_at: new Date().toISOString(),
+        if (userId && customerId) {
+          await storeSubscriptionInUserMetadata(admin, userId, {
+            stripe_subscription: {
+              customerId,
+              subscriptionId,
+              plan: planId || "pro",
+              status: "active",
+            },
           });
+
+          // Also try to update/create tenant record
+          try {
+            const { data: tu } = await (db.from("identity_tenant_users") as any).select("tenant_id").eq("user_id", userId).maybeSingle();
+            if (tu?.tenant_id) {
+              await (db.from("identity_tenants") as any).update({
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                subscription_status: "active",
+                plan: planId || null,
+                updated_at: new Date().toISOString(),
+              }).eq("id", tu.tenant_id);
+            }
+          } catch { /* tenant update is optional */ }
         }
         break;
       }
@@ -54,7 +74,6 @@ export async function POST(req: Request) {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
-        const subTenantId = subscription.metadata?.tenantId;
         const status = subscription.status === "active" || subscription.status === "trialing" ? "active"
           : subscription.status === "past_due" ? "past_due"
           : subscription.status === "canceled" ? "canceled"
@@ -65,23 +84,29 @@ export async function POST(req: Request) {
         const priceId = items?.[0]?.price?.id;
         const plan = priceId ? getPlanByPriceId(priceId) : null;
 
-        if (subTenantId) {
-          await updateTenant(subTenantId, {
-            subscription_status: status,
-            plan: plan?.id || null,
-            stripe_subscription_id: subscription.id,
-            updated_at: new Date().toISOString(),
+        const subUserId = subscription.metadata?.userId;
+        if (subUserId) {
+          await storeSubscriptionInUserMetadata(admin, subUserId, {
+            stripe_subscription: {
+              customerId: subscription.customer as string,
+              subscriptionId: subscription.id,
+              plan: plan?.id || "pro",
+              status,
+            },
           });
-        } else {
+        }
+
+        // Also update tenant record if exists
+        try {
           const { data: tenants } = await (db.from("identity_tenants") as any).select("id").eq("stripe_subscription_id", subscription.id).limit(1);
           if (tenants?.[0]) {
-            await updateTenant(tenants[0].id, {
+            await (db.from("identity_tenants") as any).update({
               subscription_status: status,
               plan: plan?.id || null,
               updated_at: new Date().toISOString(),
-            });
+            }).eq("id", tenants[0].id);
           }
-        }
+        } catch { /* optional */ }
         break;
       }
 
@@ -89,13 +114,16 @@ export async function POST(req: Request) {
         const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string;
         if (subscriptionId) {
-          const { data: tenants } = await (db.from("identity_tenants") as any).select("id").eq("stripe_subscription_id", subscriptionId).limit(1);
-          if (tenants?.[0]) {
-            await updateTenant(tenants[0].id, {
-              subscription_status: "past_due",
-              updated_at: new Date().toISOString(),
-            });
-          }
+          // Find user by subscription and update status
+          try {
+            const { data: tenants } = await (db.from("identity_tenants") as any).select("id").eq("stripe_subscription_id", subscriptionId).limit(1);
+            if (tenants?.[0]) {
+              await (db.from("identity_tenants") as any).update({
+                subscription_status: "past_due",
+                updated_at: new Date().toISOString(),
+              }).eq("id", tenants[0].id);
+            }
+          } catch { /* optional */ }
         }
         break;
       }

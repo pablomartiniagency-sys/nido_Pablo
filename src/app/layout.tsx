@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ToastProvider } from "@/components/ui/Toast";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" />
       </head>
       <body className="bg-background text-foreground antialiased font-sans">
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider><Providers>{children}</Providers></ToastProvider>
       </body>
     </html>
   );

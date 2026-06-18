@@ -26,6 +26,8 @@ export function ContabilidadView() {
   const [tab, setTab] = useState<TabView>("gastos");
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaGasto | "todas">("todas");
+  const [sortKey, setSortKey] = useState<"fecha" | "importe">("fecha");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrStatusText, setOcrStatusText] = useState("Escanear factura");
   const [showModal, setShowModal] = useState(false);
@@ -42,13 +44,22 @@ export function ContabilidadView() {
   const [asientoForm, setAsientoForm] = useState({ fecha: new Date().toISOString().split("T")[0], concepto: "", importe: "", tipo: "gasto" as "ingreso" | "gasto", categoria: "otros" });
   const [form, setForm] = useState({ proveedor: "", concepto: "", importe: "", iva: "21", categoria: "otros" as CategoriaGasto, recurrencia: "puntual" as Recurrencia, fecha: new Date().toISOString().split("T")[0], notas: "" });
 
+  const toggleSort = (key: "fecha" | "importe") => {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir(key === "fecha" ? "desc" : "desc"); }
+  };
+
   const filtrados = useMemo(() => {
     return gastos.filter(g => {
       if (categoriaFiltro !== "todas" && g.categoria !== categoriaFiltro) return false;
       if (busqueda) { const q = busqueda.toLowerCase(); return g.proveedor.toLowerCase().includes(q) || g.concepto.toLowerCase().includes(q); }
       return true;
-    }).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  }, [gastos, categoriaFiltro, busqueda]);
+    }).sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "fecha") return (new Date(a.fecha).getTime() - new Date(b.fecha).getTime()) * dir;
+      return (a.importe - b.importe) * dir;
+    });
+  }, [gastos, categoriaFiltro, busqueda, sortKey, sortDir]);
 
   const totalMes = useMemo(() => gastos.filter(g => g.fecha.startsWith("2026-06")).reduce((s, g) => s + g.importe, 0), [gastos]);
   const porCategoria = useMemo(() => {
@@ -309,14 +320,18 @@ export function ContabilidadView() {
             <CardHeader><CardTitle>Libro de gastos ({filtrados.length})</CardTitle></CardHeader>
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Fecha</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Proveedor</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Concepto</th>
-                    <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Categoría</th>
-                    <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase">Importe</th>
-                    <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">IVA</th>
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase cursor-pointer select-none hover:text-ink-900 transition" onClick={() => toggleSort("fecha")}>
+                        Fecha {sortKey === "fecha" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                      </th>
+                      <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Proveedor</th>
+                      <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Concepto</th>
+                      <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase">Categoría</th>
+                      <th className="text-right py-3 px-3 text-ink-500 font-medium text-xs uppercase cursor-pointer select-none hover:text-ink-900 transition" onClick={() => toggleSort("importe")}>
+                        Importe {sortKey === "importe" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                      </th>
+                      <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase">IVA</th>
                     <th className="text-left py-3 px-3 text-ink-500 font-medium text-xs uppercase hidden md:table-cell">Archivo</th>
                     <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase hidden md:table-cell">OCR</th>
                     <th className="text-center py-3 px-3 text-ink-500 font-medium text-xs uppercase w-14"></th>
