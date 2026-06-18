@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth/AuthContext";
+import { createIdentityClient } from "@/lib/supabase-identity";
 import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading, login } = useAuth();
+  const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,8 +15,49 @@ export default function LoginPage() {
   const [resetMode, setResetMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const init = async () => {
+      const identity = createIdentityClient();
+      if (!identity) { setChecking(false); return; }
+
+      // Check for recovery hash (from password reset email)
+      if (window.location.hash) {
+        const hash = new URLSearchParams(window.location.hash.replace("#", ""));
+        if (hash.get("type") === "recovery") {
+          const accessToken = hash.get("access_token");
+          const refreshToken = hash.get("refresh_token");
+          if (accessToken && refreshToken) {
+            const { error } = await identity.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            } as any);
+            if (!error) {
+              window.location.hash = "";
+              setRecoveryMode(true);
+              setChecking(false);
+              return;
+            }
+          }
+        }
+      }
+
+      // Check existing session
+      const { data: { session } } = await identity.auth.getSession();
+      if (session?.user) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setChecking(false);
+    };
+    init();
+  }, [router]);
+
+  if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center text-ink-400 text-sm animate-pulse p-6">
         Cargando...
@@ -24,22 +65,23 @@ export default function LoginPage() {
     );
   }
 
-  if (user) {
-    router.replace("/dashboard");
-    return null;
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!email || !password) { setError("Completa todos los campos"); return; }
     setSubmitting(true);
-    const result = await login(email, password);
+    const identity = createIdentityClient();
+    if (!identity) { setError("Error de configuración de autenticación"); setSubmitting(false); return; }
+    const { data, error: signInError } = await identity.auth.signInWithPassword({ email, password });
     setSubmitting(false);
-    if (result.success) {
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials"
+        ? "Email o contraseña incorrectos"
+        : "Error de autenticación: " + signInError.message);
+    } else if (data.user) {
       router.replace("/dashboard");
     } else {
-      setError(result.error || "Credenciales incorrectas");
+      setError("Email o contraseña incorrectos");
     }
   };
 
@@ -59,6 +101,22 @@ export default function LoginPage() {
       setResetSent(true);
     } catch { setError("Error de conexión"); }
     setResetSubmitting(false);
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!newPassword || newPassword.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    setSubmitting(true);
+    const identity = createIdentityClient();
+    if (!identity) { setError("Error de configuración de autenticación"); setSubmitting(false); return; }
+    const { error: updateError } = await identity.auth.updateUser({ password: newPassword });
+    setSubmitting(false);
+    if (updateError) {
+      setError("Error: " + updateError.message);
+    } else {
+      setRecoverySuccess(true);
+    }
   };
 
   return (
@@ -142,7 +200,28 @@ export default function LoginPage() {
           <div className="text-xs text-ink-400 mt-1">Inicia sesión en tu centro</div>
         </div>
 
-        {resetMode ? (
+        {recoveryMode ? (
+          <>
+            {recoverySuccess ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-ink-600 mb-2">✅ Contraseña actualizada</p>
+                <p className="text-xs text-ink-500">Tu contraseña se ha restablecido correctamente.</p>
+                <button onClick={() => router.push("/login")} className="btn-primary w-full mt-4">Iniciar sesión</button>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdatePassword}>
+                <div className="mb-4">
+                  <label className="text-xs font-medium text-ink-600 mb-1 block">Nueva contraseña</label>
+                  <input className="input" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" autoFocus />
+                </div>
+                {error && (<div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>)}
+                <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50">
+                  {submitting ? "Guardando..." : "Establecer nueva contraseña"}
+                </button>
+              </form>
+            )}
+          </>
+        ) : resetMode ? (
           <>
             {resetSent ? (
               <div className="text-center py-4">
