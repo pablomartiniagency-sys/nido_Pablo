@@ -12,6 +12,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   if (loading) {
     return (
@@ -38,6 +41,24 @@ export default function LoginPage() {
     } else {
       setError(result.error || "Credenciales incorrectas");
     }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email) { setError("Introduce tu email"); return; }
+    setResetSubmitting(true);
+    try {
+      const { createIdentityClient } = await import("@/lib/supabase-identity");
+      const identity = createIdentityClient();
+      if (!identity) { setError("Error de configuración de autenticación"); setResetSubmitting(false); return; }
+      const { error } = await identity.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/login?reset=ok",
+      });
+      if (error) { setError("Error: " + error.message); setResetSubmitting(false); return; }
+      setResetSent(true);
+    } catch { setError("Error de conexión"); }
+    setResetSubmitting(false);
   };
 
   return (
@@ -121,46 +142,47 @@ export default function LoginPage() {
           <div className="text-xs text-ink-400 mt-1">Inicia sesión en tu centro</div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="text-xs font-medium text-ink-600 mb-1 block">Email</label>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="email@ejemplo.com"
-              autoComplete="email"
-              autoFocus
-            />
-          </div>
-          <div className="mb-6">
-            <label className="text-xs font-medium text-ink-600 mb-1 block">Contraseña</label>
-            <input
-              className="input"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Contraseña"
-              autoComplete="current-password"
-              onKeyDown={e => e.key === "Enter" && handleSubmit(e)}
-            />
-          </div>
-
-          {error && (
-            <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-              {error}
+        {resetMode ? (
+          <>
+            {resetSent ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-ink-600 mb-2">📧 Revisa tu email</p>
+                <p className="text-xs text-ink-500">Si el email está registrado, recibirás un enlace para restablecer tu contraseña.</p>
+                <button onClick={() => { setResetMode(false); setResetSent(false); }} className="text-xs text-lapis-500 hover:underline mt-4">Volver a iniciar sesión</button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword}>
+                <div className="mb-4">
+                  <label className="text-xs font-medium text-ink-600 mb-1 block">Email</label>
+                  <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@ejemplo.com" autoComplete="email" autoFocus />
+                </div>
+                {error && (<div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>)}
+                <button type="submit" disabled={resetSubmitting} className="btn-primary w-full disabled:opacity-50">
+                  {resetSubmitting ? "Enviando..." : "Enviar enlace de recuperación"}
+                </button>
+                <button type="button" onClick={() => { setResetMode(false); setError(""); }} className="w-full text-xs text-ink-400 hover:text-ink-600 mt-3">Volver a iniciar sesión</button>
+              </form>
+            )}
+          </>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="text-xs font-medium text-ink-600 mb-1 block">Email</label>
+              <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@ejemplo.com" autoComplete="email" autoFocus />
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary w-full disabled:opacity-50"
-          >
-            {submitting ? "Entrando..." : "Iniciar sesión"}
-          </button>
-        </form>
+            <div className="mb-2">
+              <label className="text-xs font-medium text-ink-600 mb-1 block">Contraseña</label>
+              <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" autoComplete="current-password" onKeyDown={e => e.key === "Enter" && handleSubmit(e)} />
+            </div>
+            <div className="text-right mb-6">
+              <button type="button" onClick={() => { setResetMode(true); setError(""); }} className="text-[11px] text-lapis-500 hover:underline">Olvidé mi contraseña</button>
+            </div>
+            {error && (<div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>)}
+            <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50">
+              {submitting ? "Entrando..." : "Iniciar sesión"}
+            </button>
+          </form>
+        )}
 
         <div className="mt-6 pt-4 border-t border-gray-100 text-center">
           <a

@@ -88,11 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 2. No auth — redirect to login page
       setLoading(false);
-      if (window.location.pathname !== "/" && !window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/privacidad")) {
-        window.location.href = "/login";
-      }
     };
 
     checkSession();
