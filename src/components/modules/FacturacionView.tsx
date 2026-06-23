@@ -34,7 +34,7 @@ export function FacturacionView() {
   const [sepaXml, setSepaXml] = useState("");
   const [showSepa, setShowSepa] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ familiaId: "", periodo: `Junio 2026`, items: [] as { concepto: string; importe: string }[], recurrencia: "mensual" as "mensual" | "anual", fechaInicio: "" });
+  const [form, setForm] = useState({ familiaId: "", periodo: `Junio 2026`, items: [] as { concepto: string; importe: string; iva: string }[], recurrencia: "mensual" as "mensual" | "anual", fechaInicio: "" });
 
   const filtradas = useMemo(() => {
     return facturas.filter(f => {
@@ -82,8 +82,8 @@ export function FacturacionView() {
   const openNewFactura = (familiaId?: string) => {
     const f = familiaId ? familias.find(x => x.id === familiaId) : null;
     const items = f?.servicios?.length
-      ? f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString() }))
-      : [{ concepto: "", importe: "" }];
+      ? f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString(), iva: (s.iva ?? 0).toString() }))
+      : [{ concepto: "", importe: "", iva: "0" }];
     setForm({ familiaId: familiaId || "", periodo: "Junio 2026", items, recurrencia: "mensual", fechaInicio: "" });
     setShowModal(true);
   };
@@ -91,9 +91,9 @@ export function FacturacionView() {
   const handleFamiliaChange = (familiaId: string) => {
     const f = familias.find(x => x.id === familiaId);
     if (f?.servicios?.length) {
-      setForm(p => ({ ...p, familiaId, items: f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString() })) }));
+      setForm(p => ({ ...p, familiaId, items: f.servicios.map(s => ({ concepto: s.concepto, importe: s.importe.toString(), iva: (s.iva ?? 0).toString() })) }));
     } else {
-      setForm(p => ({ ...p, familiaId, items: [{ concepto: "", importe: "" }] }));
+      setForm(p => ({ ...p, familiaId, items: [{ concepto: "", importe: "", iva: "0" }] }));
     }
   };
 
@@ -103,7 +103,7 @@ export function FacturacionView() {
     }
     const familia = familias.find(f => f.id === form.familiaId);
     if (!familia) { toast("Selecciona una familia", "error"); return; }
-    const items: Servicio[] = form.items.map(i => ({ concepto: i.concepto, importe: parseFloat(i.importe) }));
+    const items: Servicio[] = form.items.map(i => ({ concepto: i.concepto, importe: parseFloat(i.importe), iva: parseFloat(i.iva || "0") }));
     const total = items.reduce((s, i) => s + i.importe, 0);
     const newFactura: Factura = {
       id: genId("fac"),
@@ -128,14 +128,14 @@ export function FacturacionView() {
       const sigAño = idx >= 11 ? parseInt(añoStr) + 1 : parseInt(añoStr);
       setForm({ ...form, periodo: `${sigMes} ${sigAño}` });
     } else {
-      setForm({ familiaId: "", periodo: "Junio 2026", items: [{ concepto: "", importe: "" }], recurrencia: "mensual", fechaInicio: "" });
+      setForm({ familiaId: "", periodo: "Junio 2026", items: [{ concepto: "", importe: "", iva: "0" }], recurrencia: "mensual", fechaInicio: "" });
       setShowModal(false);
     }
   };
 
-  const addItemForm = () => setForm(p => ({ ...p, items: [...p.items, { concepto: "", importe: "" }] }));
+  const addItemForm = () => setForm(p => ({ ...p, items: [...p.items, { concepto: "", importe: "", iva: "0" }] }));
   const removeItemForm = (i: number) => setForm(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
-  const updateItemForm = (i: number, field: "concepto" | "importe", value: string) => setForm(p => ({
+  const updateItemForm = (i: number, field: "concepto" | "importe" | "iva", value: string) => setForm(p => ({
     ...p, items: p.items.map((item, idx) => idx === i ? { ...item, [field]: value } : item),
   }));
 
@@ -555,6 +555,15 @@ export function FacturacionView() {
                 <div className="w-24 space-y-1">
                   <label className="text-xs text-ink-500">Importe (€)</label>
                   <input className="input w-full" placeholder="0.00" type="number" step="0.01" value={item.importe} onChange={e => updateItemForm(i, "importe", e.target.value)} />
+                </div>
+                <div className="w-20 space-y-1">
+                  <label className="text-xs text-ink-500">IVA (%)</label>
+                  <select className="select w-full" value={item.iva} onChange={e => updateItemForm(i, "iva", e.target.value)}>
+                    <option value="0">0%</option>
+                    <option value="4">4%</option>
+                    <option value="10">10%</option>
+                    <option value="21">21%</option>
+                  </select>
                 </div>
                 {form.items.length > 1 && <button onClick={() => removeItemForm(i)} className="pb-1 text-ink-400 hover:text-red-600"><IconTrash width={14} height={14} /></button>}
               </div>

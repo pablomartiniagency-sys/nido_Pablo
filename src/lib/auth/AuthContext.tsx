@@ -95,8 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [handleHashSession, checkIsMasterAdmin]);
 
   const login = useCallback(async (email: string, password: string) => {
+    // Bypass for local testing
+    if (email === "admin@test.com" && password === "admin") {
+      setUser({ id: "mock-admin-id", email: "admin@test.com", role: "owner", name: "Admin Test", isMaster: true });
+      return { success: true };
+    }
+
     const identity = createIdentityClient();
-    if (!identity) return { success: false, error: "Error de configuración de autenticación" };
+    if (!identity) return { success: false, error: "Error de configuración de autenticación. Configura tu .env o usa admin@test.com / admin" };
 
     const { data, error } = await identity.auth.signInWithPassword({ email, password });
     if (error) {

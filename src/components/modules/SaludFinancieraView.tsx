@@ -64,10 +64,18 @@ export function SaludFinancieraView() {
   const { toast } = useToast();
 
   const [periodo, setPeriodo] = useState("");
-  const reporte = useMemo(() => generarReporteFinanciero(facturas, gastos, periodo), [facturas, gastos, periodo]);
+  const [balanceOverrides, setBalanceOverrides] = useState<Partial<Record<BalanceField, number>>>({});
+
+  const manualBalance = useMemo(() => ({
+    caja: balanceOverrides.caja ?? 0,
+    proveedores: balanceOverrides.proveedores ?? 0,
+    activosFijos: balanceOverrides.activosFijos ?? 0,
+    deuda: (balanceOverrides.deudaCortoPlazo ?? 0) + (balanceOverrides.deudaLargoPlazo ?? 0)
+  }), [balanceOverrides]);
+
+  const reporte = useMemo(() => generarReporteFinanciero(facturas, gastos, periodo, manualBalance), [facturas, gastos, periodo, manualBalance]);
   const ratios = useMemo(() => calcularRatios(reporte), [reporte]);
 
-  const [balanceOverrides, setBalanceOverrides] = useState<Partial<Record<BalanceField, number>>>({});
   const [editingField, setEditingField] = useState<BalanceField | null>(null);
   const [editValue, setEditValue] = useState("");
 

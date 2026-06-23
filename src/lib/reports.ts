@@ -94,8 +94,19 @@ export function generateModelo303(facturas: Factura[], gastos: Gasto[], trimestr
     return y === parseInt(año) && m >= mesesTrimestre && m < mesesTrimestre + 3;
   });
 
-  const baseRepercutida = facturasTrim.reduce((s, f) => s + Math.round(f.total / (1 + (f.items[0]?.concepto.includes("exento") ? 0 : 0.21)) * 100) / 100, 0);
-  const ivaRepercutido = facturasTrim.reduce((s, f) => s + Math.round(f.total * 0.21 * 100) / 100, 0);
+  const { bR, iR } = facturasTrim.reduce((acc, f) => {
+    let fBase = 0; let fIva = 0;
+    f.items.forEach(item => {
+      const ivaPct = item.iva ?? 21;
+      const baseItem = item.importe / (1 + ivaPct / 100);
+      fBase += baseItem;
+      fIva += item.importe - baseItem;
+    });
+    return { bR: acc.bR + fBase, iR: acc.iR + fIva };
+  }, { bR: 0, iR: 0 });
+
+  const baseRepercutida = Math.round(bR * 100) / 100;
+  const ivaRepercutido = Math.round(iR * 100) / 100;
   const baseSoportada = gastosTrim.reduce((s, g) => s + Math.round(g.importe / (1 + g.iva / 100) * 100) / 100, 0);
   const ivaSoportado = gastosTrim.reduce((s, g) => s + Math.round(g.importe - (g.importe / (1 + g.iva / 100)) * 100) / 100, 0);
   const resultado = Math.round((ivaRepercutido - ivaSoportado) * 100) / 100;
@@ -156,11 +167,20 @@ export function generateModelo390(facturas: Factura[], gastos: Gasto[], año: st
     const ms = (t - 1) * 3 + 1;
     const fs = facturas.filter(f => { const m = getPeriodoMes(f.periodo); return m >= ms && m < ms + 3; });
     const gs = gastos.filter(g => { const [y, m] = g.fecha.split("-").map(Number); return y === parseInt(año) && m >= ms && m < ms + 3; });
-    const bR = fs.reduce((s, f) => s + Math.round(f.total / 1.21 * 100) / 100, 0);
-    const iR = fs.reduce((s, f) => s + Math.round(f.total * 0.21 * 100) / 100, 0);
+    
+    const { bR, iR } = fs.reduce((acc, f) => {
+      let fBase = 0; let fIva = 0;
+      f.items.forEach(item => {
+        const ivaPct = item.iva ?? 21;
+        const baseItem = item.importe / (1 + ivaPct / 100);
+        fBase += baseItem; fIva += item.importe - baseItem;
+      });
+      return { bR: acc.bR + fBase, iR: acc.iR + fIva };
+    }, { bR: 0, iR: 0 });
+
     const bS = gs.reduce((s, g) => s + Math.round(g.importe / (1 + g.iva / 100) * 100) / 100, 0);
     const iS = gs.reduce((s, g) => s + Math.round(g.importe - (g.importe / (1 + g.iva / 100)) * 100) / 100, 0);
-    return { trimestre: t, facturas: fs.length, gastos: gs.length, baseRepercutida: bR, ivaRepercutido: iR, baseSoportada: bS, ivaSoportado: iS, resultado: Math.round((iR - iS) * 100) / 100 };
+    return { trimestre: t, facturas: fs.length, gastos: gs.length, baseRepercutida: Math.round(bR*100)/100, ivaRepercutido: Math.round(iR*100)/100, baseSoportada: bS, ivaSoportado: iS, resultado: Math.round((iR - iS) * 100) / 100 };
   });
 
   const totalFacturas = facturas.filter(f => { const m = getPeriodoMes(f.periodo); return m >= 1 && m <= 12; }).length;

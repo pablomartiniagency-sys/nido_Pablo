@@ -208,9 +208,14 @@ export default function OportunidadesView() {
       </div>
 
       {/* Oportunidades section */}
-      {oportunidades.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Oportunidades activas</h3>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold">Oportunidades activas</h3>
+          <button onClick={() => setShowOportunidadForm(true)} className="px-3 py-1.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors text-xs font-medium">
+            + Nueva oportunidad
+          </button>
+        </div>
+        {oportunidades.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {oportunidades.filter(o => o.etapa !== "cierre").map(op => {
               const lead = leads.find(l => l.id === op.leadId);
@@ -229,6 +234,60 @@ export default function OportunidadesView() {
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <p className="text-ink-400 text-sm">No hay oportunidades activas. Empieza creando una desde un Lead.</p>
+        )}
+      </div>
+
+      {/* Modal nueva oportunidad */}
+      {showOportunidadForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowOportunidadForm(false)}>
+          <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Nueva oportunidad</h3>
+            <form onSubmit={e => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              addOportunidad({
+                id: `op-${Date.now()}`,
+                leadId: fd.get("leadId") as string,
+                titulo: fd.get("titulo") as string,
+                valorEstimado: parseFloat(fd.get("valorEstimado") as string) || 0,
+                probabilidad: 20,
+                etapa: "interes",
+                fechaEstimadaCierre: fd.get("fechaEstimadaCierre") as string || new Date().toISOString().split("T")[0],
+                createdAt: new Date().toISOString()
+              });
+              setShowOportunidadForm(false);
+            }}>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-ink-700">Lead vinculado</label>
+                  <select name="leadId" required className="select w-full px-3 py-2 rounded-xl text-sm border border-gray-200">
+                    <option value="">Seleccionar lead...</option>
+                    {leads.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-ink-700">Título de oportunidad</label>
+                  <input name="titulo" required placeholder="Ej: Matrícula Curso Completo" className="w-full input" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-ink-700">Valor mensual (€)</label>
+                    <input name="valorEstimado" type="number" step="0.01" required placeholder="Ej: 450" className="w-full input" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-ink-700">Cierre estimado</label>
+                    <input name="fechaEstimadaCierre" type="date" required className="w-full input" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setShowOportunidadForm(false)} className="px-4 py-2 text-sm text-ink-500 hover:text-ink-900 transition-colors">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors text-sm font-medium">Crear oportunidad</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

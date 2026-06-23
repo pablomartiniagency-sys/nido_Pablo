@@ -1,5 +1,5 @@
 export type EstadoFactura = "borrador" | "enviada" | "pagada" | "impago" | "anulada";
-export type Servicio = { concepto: string; importe: number };
+export type Servicio = { concepto: string; importe: number; iva?: number };
 
 export type Familia = {
   id: string; nombre: string; email: string; telefono: string; iban: string;

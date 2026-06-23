@@ -23,7 +23,7 @@ export interface FinancialReport {
   proyeccionTrimestral: { trimestre: string; ingresos: number; gastos: number; ebitda: number }[];
 }
 
-export function generarReporteFinanciero(facturas: Factura[], gastos: Gasto[], periodo: string): FinancialReport {
+export function generarReporteFinanciero(facturas: Factura[], gastos: Gasto[], periodo: string, manualBalance?: { caja: number; proveedores: number; activosFijos: number; deuda: number }): FinancialReport {
   const facturasPeriodo = periodo ? facturas : facturas;
   const gastosPeriodo = periodo ? gastos.filter(g => g.fecha.startsWith(periodo.slice(0, 7))) : gastos;
 
@@ -51,18 +51,21 @@ export function generarReporteFinanciero(facturas: Factura[], gastos: Gasto[], p
   const ebit = ebitda;
   const resultadoNeto = ebit;
 
-  const caja = 0;
+  const caja = manualBalance?.caja ?? 0;
   const clientes = ingresosPendientes;
-  const activosFijos = 0;
+  const activosFijos = manualBalance?.activosFijos ?? 0;
   const totalActivos = caja + clientes + activosFijos;
 
-  const proveedores = 0;
-  const adminPub = 0;
-  const totalPasivos = proveedores + adminPub;
+  const proveedores = manualBalance?.proveedores ?? 0;
+  const deuda = manualBalance?.deuda ?? 0;
+  const adminPub = 0; // IVA/IRPF could be estimated, but leaving 0 for now
+  const totalPasivos = proveedores + adminPub + deuda;
   const patrimonioNeto = totalActivos - totalPasivos;
 
-  const liquidez = 0;
-  const endeudamiento = 0;
+  const activosCorrientes = caja + clientes;
+  const pasivosCorrientes = proveedores + adminPub + (deuda * 0.2); // assuming 20% of debt is short-term
+  const liquidez = pasivosCorrientes > 0 ? activosCorrientes / pasivosCorrientes : (activosCorrientes > 0 ? 9.99 : 0);
+  const endeudamiento = totalActivos > 0 ? totalPasivos / totalActivos : 0;
   const rentabilidad = ingresosTotales > 0 ? (resultadoNeto / ingresosTotales) * 100 : 0;
 
   const proyeccionTrimestral = [
