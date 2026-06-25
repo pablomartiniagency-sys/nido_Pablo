@@ -95,36 +95,42 @@ export async function POST(req: NextRequest) {
 
     const menuRows = body.menu ? flattenMenu(body.menu, userId) : [];
 
-    const [
-      configRow,
-    ] = await Promise.all([
-      body.configuracion ? Promise.resolve(body.configuracion) : Promise.resolve(null),
+    const configRow = body.configuracion || null;
+
+    // Sincronización por FASES según las dependencias del modelo canónico. Los
+    // triggers de alumnos/facturas/cargos/asistencia/incidencias/nominas buscan
+    // a su "padre" (familia→cuenta, empleado, alumno→sujeto) al escribir; si un
+    // hijo nuevo se insertara en paralelo con su padre nuevo, el padre podría no
+    // existir aún y el hijo quedaría sin vincular (cuenta_id/sujeto_id NULL).
+    // Por eso: Fase 0 (raíz) → Fase 1 (depende de 0) → Fase 2 (depende de 1).
+    // Dentro de cada fase, en paralelo.
+
+    // Fase 0 — entidades raíz (sin dependencias)
+    await Promise.all([
+      syncTable(sb, "nido_familias", userId, (body.familias || []).map(r => mapFamiliaDb(r, userId))),
+      syncTable(sb, "nido_empleados", userId, (body.empleados || []).map(r => mapEmpleadoDb(r, userId))),
+      syncTable(sb, "nido_gastos", userId, (body.gastos || []).map(r => mapGastoDb(r, userId))),
+      syncTable(sb, "nido_suministros", userId, (body.suministros || []).map(r => mapSuministroDb(r, userId))),
+      syncTable(sb, "nido_menu_semanal", userId, menuRows),
+      syncTable(sb, "nido_tareas", userId, (body.tareas || []).map(r => mapTareaDb(r, userId))),
+      syncTable(sb, "nido_leads", userId, (body.leads || []).map(r => mapLeadDb(r, userId))),
+      syncTable(sb, "nido_oportunidades", userId, (body.oportunidades || []).map(r => mapOportunidadDb(r, userId))),
+      ...(configRow ? [syncTable(sb, "nido_configuracion", userId, [mapConfiguracionDb(configRow, userId)])] : []),
     ]);
 
-    const operations = [
-      replaceData(sb, "nido_familias", userId, (body.familias || []).map(r => mapFamiliaDb(r, userId))),
-      replaceData(sb, "nido_facturas", userId, (body.facturas || []).map(r => mapFacturaDb(r, userId))),
-      replaceData(sb, "nido_gastos", userId, (body.gastos || []).map(r => mapGastoDb(r, userId))),
-      replaceData(sb, "nido_empleados", userId, (body.empleados || []).map(r => mapEmpleadoDb(r, userId))),
-      replaceData(sb, "nido_nominas", userId, (body.nominas || []).map(r => mapNominaDb(r, userId))),
-      replaceData(sb, "nido_suministros", userId, (body.suministros || []).map(r => mapSuministroDb(r, userId))),
-      replaceData(sb, "nido_menu_semanal", userId, menuRows),
-      replaceData(sb, "nido_incidencias", userId, (body.incidencias || []).map(r => mapIncidenciaDb(r, userId))),
-      replaceData(sb, "nido_alumnos", userId, (body.alumnos || []).map(r => mapAlumnoDb(r, userId))),
-      replaceData(sb, "nido_asistencia", userId, (body.asistencia || []).map(r => mapAsistenciaDb(r, userId))),
-      replaceData(sb, "nido_leads", userId, (body.leads || []).map(r => mapLeadDb(r, userId))),
-      replaceData(sb, "nido_oportunidades", userId, (body.oportunidades || []).map(r => mapOportunidadDb(r, userId))),
-      replaceData(sb, "nido_tareas", userId, (body.tareas || []).map(r => mapTareaDb(r, userId))),
-      replaceData(sb, "nido_cargos_pendientes", userId, (body.cargosPendientes || []).map(r => mapCargoDb(r, userId))),
-    ];
+    // Fase 1 — dependen de cuentas/empleados (Fase 0)
+    await Promise.all([
+      syncTable(sb, "nido_alumnos", userId, (body.alumnos || []).map(r => mapAlumnoDb(r, userId))),
+      syncTable(sb, "nido_facturas", userId, (body.facturas || []).map(r => mapFacturaDb(r, userId))),
+      syncTable(sb, "nido_nominas", userId, (body.nominas || []).map(r => mapNominaDb(r, userId))),
+    ]);
 
-    if (configRow) {
-      operations.push(
-        replaceData(sb, "nido_configuracion", userId, [mapConfiguracionDb(configRow, userId)])
-      );
-    }
-
-    await Promise.all(operations);
+    // Fase 2 — dependen de sujetos/alumnos (Fase 1)
+    await Promise.all([
+      syncTable(sb, "nido_cargos_pendientes", userId, (body.cargosPendientes || []).map(r => mapCargoDb(r, userId))),
+      syncTable(sb, "nido_asistencia", userId, (body.asistencia || []).map(r => mapAsistenciaDb(r, userId))),
+      syncTable(sb, "nido_incidencias", userId, (body.incidencias || []).map(r => mapIncidenciaDb(r, userId))),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
@@ -132,17 +138,49 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function replaceData(sb: any, table: string, userId: string, rows: any[]) {
-  if (!rows.length) {
-    await sb.from(table).delete().eq("user_id", userId);
-    return;
-  }
-  await sb.from(table).delete().eq("user_id", userId);
+// Sincronización quirúrgica (diff-and-apply): lee el estado vivo de la vista y
+// aplica SOLO lo cambiado — inserta lo nuevo, borra (suave, vía trigger) lo que
+// desapareció del payload, y actualiza en sitio el resto. Sustituye al
+// full-replace anterior (delete-all + insert-all), que en las vistas con borrado
+// suave dejaba una fila huérfana por registro en CADA guardado. No se usa
+// upsert(): ON CONFLICT no funciona sobre vistas (las dirige un trigger
+// INSTEAD OF, que no aporta constraint única).
+async function syncTable(sb: any, table: string, userId: string, rows: any[]) {
   const BATCH = 50;
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
+
+  // 1. Estado actual de la vista (solo filas vivas), acotado al usuario.
+  const { data: existing, error: selErr } = await sb
+    .from(table)
+    .select("id")
+    .eq("user_id", userId);
+  if (selErr) throw new Error(`${table} (select): ${selErr.message}`);
+
+  const existingIds = new Set((existing || []).map((r: any) => String(r.id)));
+  const incomingIds = new Set(rows.map((r: any) => String(r.id)));
+
+  const toInsert = rows.filter((r: any) => !existingIds.has(String(r.id)));
+  const toUpdate = rows.filter((r: any) => existingIds.has(String(r.id)));
+  const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id));
+
+  // 2. Borrado (suave vía trigger) SOLO de lo que ya no está en el payload.
+  for (let i = 0; i < toDelete.length; i += BATCH) {
+    const batch = toDelete.slice(i, i + BATCH);
+    const { error } = await sb.from(table).delete().eq("user_id", userId).in("id", batch);
+    if (error) throw new Error(`${table} (delete): ${error.message}`);
+  }
+
+  // 3. Inserción SOLO de lo nuevo (en lotes).
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const batch = toInsert.slice(i, i + BATCH);
     const { error } = await sb.from(table).insert(batch);
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) throw new Error(`${table} (insert): ${error.message}`);
+  }
+
+  // 4. Actualización en sitio de lo ya existente (fila a fila: PostgREST no
+  //    permite update masivo con valores distintos por fila sobre una vista).
+  for (const r of toUpdate) {
+    const { error } = await sb.from(table).update(r).eq("id", (r as any).id).eq("user_id", userId);
+    if (error) throw new Error(`${table} (update ${(r as any).id}): ${error.message}`);
   }
 }
 
